@@ -398,7 +398,6 @@ function App() {
       alert('Noe gikk galt. Sjekk konsollen for detaljer. ' + err);
       setMode('onboarding');
     } finally {
-      setIsGenerating(false);
       setGenMessage('');
     }
   };
@@ -495,7 +494,6 @@ function App() {
       console.error("Next batch error", err);
       alert("Feil ved generering av neste måned.");
     } finally {
-      setIsGenerating(false);
       setGenMessage('');
     }
   };

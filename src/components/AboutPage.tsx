@@ -1,4 +1,3 @@
-import React from 'react';
 import { ScrollReveal } from './LandingPage'; // Reusing the scroll animation
 import heroBg from '../assets/brudeferden.jpg'; // Reusing hero image for continuity
 

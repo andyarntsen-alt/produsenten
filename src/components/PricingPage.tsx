@@ -1,4 +1,3 @@
-import React from 'react';
 import { ScrollReveal } from './LandingPage';
 
 const PricingPage = ({ onBack, onStart }: { onBack: () => void, onStart: () => void }) => {
