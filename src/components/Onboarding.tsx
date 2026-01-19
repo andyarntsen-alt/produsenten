@@ -2,9 +2,27 @@ import React, { useState } from 'react';
 import heroBg from '../assets/hero-bg.png';
 import { useToast } from './ToastContext';
 
+interface VibeOption {
+    label: string;
+    key: string;
+    emoji: string;
+    description: string;
+}
+
 interface OnboardingProps {
-    vibeOptions: string[];
-    onSubmit: (name: string, url: string, vibe: string, industry?: string, offer?: string, target?: string, goals?: string, frequency?: number) => void;
+    vibeOptions: VibeOption[];
+    onSubmit: (
+        name: string,
+        url: string,
+        vibe: string,
+        industry?: string,
+        offer?: string,
+        target?: string,
+        goals?: string,
+        frequency?: number,
+        coreBelief?: string,
+        voiceSignature?: string
+    ) => void;
     onCancel: () => void;
 }
 
@@ -19,6 +37,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ vibeOptions, onSubmit, onCancel
     const [target, setTarget] = useState('');
     const [goals, setGoals] = useState('');
     const [frequency, setFrequency] = useState<number>(5);
+    const [coreBelief, setCoreBelief] = useState('');
+    const [voiceSignature, setVoiceSignature] = useState('');
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -34,7 +54,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ vibeOptions, onSubmit, onCancel
             offer.trim() || undefined,
             target.trim() || undefined,
             goals.trim() || undefined,
-            frequency
+            frequency,
+            coreBelief.trim() || undefined,
+            voiceSignature.trim() || undefined
         );
     };
 
@@ -147,22 +169,61 @@ const Onboarding: React.FC<OnboardingProps> = ({ vibeOptions, onSubmit, onCancel
                             </div>
                         </div>
 
-                        {/* Tone Selection */}
+                        {/* Tone Selection - Updated with emojis and descriptions */}
                         <div>
-                            <div className="flex justify-between items-baseline mb-2">
-                                <label className="block font-serif text-brand-text/80 text-lg">Tone/stemme</label>
+                            <div className="flex justify-between items-baseline mb-3">
+                                <label className="block font-serif text-brand-text/80 text-lg">Din personlighet 🎭</label>
                             </div>
-                            <div className="grid grid-cols-3 gap-3">
+                            <div className="grid grid-cols-2 gap-3">
                                 {vibeOptions.map(opt => (
                                     <button
-                                        key={opt}
+                                        key={opt.key}
                                         type="button"
-                                        onClick={() => setVibe(opt)}
-                                        className={`p-3 rounded-lg border text-sm font-sans transition-all duration-300 ${vibe === opt ? 'bg-brand-text text-white border-brand-text shadow-lg transform scale-105' : 'bg-white border-gray-200 text-brand-text/70 hover:border-brand-gold hover:text-brand-text'}`}
+                                        onClick={() => setVibe(opt.label)}
+                                        className={`p-4 rounded-xl border text-left transition-all duration-300 ${vibe === opt.label
+                                                ? 'bg-brand-text text-white border-brand-text shadow-lg transform scale-[1.02]'
+                                                : 'bg-white border-gray-200 text-brand-text/70 hover:border-brand-gold hover:text-brand-text hover:shadow-md'
+                                            }`}
                                     >
-                                        {opt}
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="text-xl">{opt.emoji}</span>
+                                            <span className="font-bold">{opt.label}</span>
+                                        </div>
+                                        <p className={`text-xs ${vibe === opt.label ? 'text-white/80' : 'text-brand-text/50'}`}>
+                                            {opt.description}
+                                        </p>
                                     </button>
                                 ))}
+                            </div>
+                        </div>
+
+                        {/* Persona Customization - New fields */}
+                        <div className="space-y-4 p-4 bg-gradient-to-r from-brand-gold/5 to-transparent rounded-xl border border-brand-gold/20">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="text-lg">✨</span>
+                                <span className="font-serif text-brand-text/80 text-lg">Personliggjør AI-stemmen (valgfritt)</span>
+                            </div>
+
+                            <div>
+                                <label className="block mb-1 text-sm text-brand-text/60">Din Core Belief - Hva tror du på?</label>
+                                <input
+                                    type="text"
+                                    value={coreBelief}
+                                    onChange={e => setCoreBelief(e.target.value)}
+                                    className="w-full p-3 rounded-xl bg-white border border-gray-200 text-brand-text font-sans text-sm focus:outline-none focus:ring-2 focus:ring-brand-gold/50 transition-all"
+                                    placeholder="F.eks. 'Det er bedre å være autentisk og polarisere enn å være safe'"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block mb-1 text-sm text-brand-text/60">Din Voice Signature - Ditt spesielle trick</label>
+                                <input
+                                    type="text"
+                                    value={voiceSignature}
+                                    onChange={e => setVoiceSignature(e.target.value)}
+                                    className="w-full p-3 rounded-xl bg-white border border-gray-200 text-brand-text font-sans text-sm focus:outline-none focus:ring-2 focus:ring-brand-gold/50 transition-all"
+                                    placeholder="F.eks. 'Starter med kontrast, bruker sarkasme, ender med spørsmål'"
+                                />
                             </div>
                         </div>
 

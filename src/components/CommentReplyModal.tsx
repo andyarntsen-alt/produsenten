@@ -22,9 +22,20 @@ const CommentReplyModal: React.FC<CommentReplyModalProps> = ({ onClose }) => {
             const toneDescriptions: Record<string, string> = {
                 friendly: 'varm og vennlig',
                 professional: 'profesjonell og høflig',
-                funny: 'morsom og leken',
+                funny: 'morsom, med glimt i øyet, gjerne litt tørr humor eller selvironi (wit)',
                 grateful: 'takknemlig og ydmyk'
             };
+
+            let specialInstructions = '';
+            if (tone === 'funny') {
+                specialInstructions = `
+SPESIELE REGLER FOR HUMOR:
+- Ikke vær "cringe" eller barnehage-morsom.
+- Bruk ironi, overdrivelser eller understatements ("wit").
+- Det er LOV å være litt frekk (med kjærlighet).
+- Unngå standard setninger som "Hahaha så gøy".
+- Tenk: Hva ville en standup-komiker svart?`;
+            }
 
             const prompt = `Du er en community manager. Lag 4 forskjellige svar på denne kommentaren fra en følger.
 
@@ -32,10 +43,11 @@ Kommentaren:
 "${comment}"
 
 Tone: ${toneDescriptions[tone]}
+${specialInstructions}
 
 Regler:
 - Kort og konsist (1-2 setninger)
-- Bruk emojis naturlig
+- Bruk emojis naturlig (men ikke overdriv)
 - Vær autentisk, ikke robotaktig
 - Varier svarene (spørsmål, takk, engasjement, humor)
 - Norsk språk
@@ -115,8 +127,8 @@ Returner som JSON array:
                                         key={t.value}
                                         onClick={() => setTone(t.value)}
                                         className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${tone === t.value
-                                                ? 'bg-sky-500 text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                            ? 'bg-sky-500 text-white'
+                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                             }`}
                                     >
                                         {t.label}

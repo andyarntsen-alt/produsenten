@@ -10,7 +10,7 @@ import ExportTab from './tabs/ExportTab';
 
 interface WorkspaceProps {
     brand: Brand;
-    vibePresets: { label: string; description: string; }[];
+    vibePresets: { label: string; key: string; emoji: string; description: string; toneRules: string[]; }[];
     updateBrand: (brand: Brand) => void;
     onBack: () => void;
     onGenerateNext: () => void;

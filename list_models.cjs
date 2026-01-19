@@ -7,7 +7,7 @@ let apiKey = null;
 
 try {
     const envContent = fs.readFileSync(envPath, 'utf8');
-    const apiKeyMatch = envContent.match(/VITE_GEMINI_API_KEY=(.*)/);
+    const apiKeyMatch = envContent.match(/VITE_AIML_API_KEY=(.*)/);
     apiKey = apiKeyMatch ? apiKeyMatch[1].trim() : null;
 } catch (e) {
     console.error("Could not read .env file");
@@ -22,7 +22,11 @@ if (!apiKey) {
 async function listModels() {
     console.log("Fetching models...");
     try {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`);
+        const response = await fetch('https://api.aimlapi.com/v1/models', {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`
+            }
+        });
 
         if (!response.ok) {
             console.error(`Error: ${response.status} ${response.statusText}`);
@@ -33,12 +37,10 @@ async function listModels() {
 
         const data = await response.json();
 
-        if (data.models) {
-            console.log("Available Gemini Models:");
-            data.models.forEach(m => {
-                if (m.name.includes('gemini') && m.supportedGenerationMethods.includes("generateContent")) {
-                    console.log(`- ${m.name}`);
-                }
+        if (data.data) {
+            console.log("Available AIML API Models:");
+            data.data.forEach(m => {
+                console.log(`- ${m.id}`);
             });
         } else {
             console.log("No models found:", data);

@@ -4,16 +4,18 @@ interface ChatMessage {
     content: string;
 }
 
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+// Groq API Configuration
+const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 
-// Rate limiting configuration per model
+// Rate limiting configuration per model (Groq has generous limits)
 const MODEL_CONFIG = {
-    'gemini-2.5-flash': { rpm: 5, rpd: 20 },
-    'gemini-2.5-flash-lite': { rpm: 10, rpd: 20 },
-    'gemini-3-flash': { rpm: 5, rpd: 250000 },
+    'llama-3.3-70b-versatile': { rpm: 30, rpd: 14400 },
+    'llama-3.1-8b-instant': { rpm: 30, rpd: 14400 },
+    'mixtral-8x7b-32768': { rpm: 30, rpd: 14400 },
 } as const;
 
-// Fallback models in priority order (based on available quota)
+// Fallback models in priority order (best first)
 const MODELS = Object.keys(MODEL_CONFIG) as (keyof typeof MODEL_CONFIG)[];
 
 // In-memory request tracking
@@ -48,47 +50,60 @@ async function wait(ms: number): Promise<void> {
 // Make a single API call with retries for rate limiting
 async function callModelWithRetry(
     model: string,
-    contents: { role: string; parts: { text: string }[] }[],
+    messages: ChatMessage[],
     maxRetries: number = 3
 ): Promise<string> {
     let lastError: Error | null = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
         try {
-            const response = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`,
-                {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        contents,
-                        generationConfig: { temperature: 0.7 }
-                    })
-                }
-            );
+            const requestBody = {
+                model,
+                messages,
+                temperature: 0.7,
+                max_tokens: 4096
+            };
+            console.log(`[AI] Request to Groq ${model}:`, { messages: messages.length });
+
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${API_KEY}`
+                },
+                body: JSON.stringify(requestBody)
+            });
 
             // Handle rate limiting with exponential backoff
             if (response.status === 429) {
-                const backoffMs = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+                const backoffMs = Math.pow(2, attempt) * 1000;
                 console.warn(`[AI] Rate limited on ${model}, retrying in ${backoffMs}ms (attempt ${attempt + 1}/${maxRetries})`);
                 await wait(backoffMs);
                 continue;
             }
 
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error?.message || `Feil fra Gemini API (${model})`);
+                const errorText = await response.text();
+                console.error(`[AI] Error response (${response.status}):`, errorText);
+                let errorData;
+                try {
+                    errorData = JSON.parse(errorText);
+                } catch {
+                    throw new Error(`Feil fra Groq (${model}): ${response.status} - ${errorText.substring(0, 200)}`);
+                }
+                throw new Error(errorData.error?.message || `Feil fra Groq (${model}): ${response.status}`);
             }
 
             const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+            const text = data.choices?.[0]?.message?.content;
 
             if (!text) {
+                console.error(`[AI] No text in response:`, data);
                 throw new Error(`Ingen svar mottatt fra AI (${model})`);
             }
 
             logRequest(model);
-            console.log(`[AI] Success with ${model}`);
+            console.log(`[AI] Success with Groq ${model}`);
             return text.trim();
         } catch (error) {
             lastError = error as Error;
@@ -105,30 +120,7 @@ async function callModelWithRetry(
 
 export async function callAI(messages: ChatMessage[]): Promise<string> {
     if (!API_KEY) {
-        throw new Error('VITE_GEMINI_API_KEY mangler i .env');
-    }
-
-    // Convert messages to Gemini format
-    let systemContext = '';
-    const contents: { role: string; parts: { text: string }[] }[] = [];
-
-    for (const msg of messages) {
-        if (msg.role === 'system') {
-            systemContext += msg.content + '\n';
-        } else {
-            let text = msg.content;
-            if (contents.length === 0 && systemContext) {
-                text = systemContext + '\n' + text;
-            }
-            contents.push({
-                role: msg.role === 'user' ? 'user' : 'model',
-                parts: [{ text }]
-            });
-        }
-    }
-
-    if (contents.length === 0 && systemContext) {
-        contents.push({ role: 'user', parts: [{ text: systemContext }] });
+        throw new Error('VITE_GROQ_API_KEY mangler i .env');
     }
 
     // Try each model with rate limit awareness
@@ -142,7 +134,7 @@ export async function callAI(messages: ChatMessage[]): Promise<string> {
         }
 
         try {
-            return await callModelWithRetry(model, contents);
+            return await callModelWithRetry(model, messages);
         } catch (error) {
             console.warn(`[AI] Model ${model} failed:`, error);
             lastError = error as Error;
@@ -156,11 +148,61 @@ export async function callAI(messages: ChatMessage[]): Promise<string> {
 
     for (const model of MODELS) {
         try {
-            return await callModelWithRetry(model, contents, 1);
+            return await callModelWithRetry(model, messages, 1);
         } catch (error) {
             lastError = error as Error;
         }
     }
 
     throw lastError || new Error('Kunne ikke generere innhold med noen modeller. Prøv igjen om litt.');
+}
+
+// CometAPI for Image Generation
+const IMAGE_API_KEY = import.meta.env.VITE_COMET_API_KEY;
+const IMAGE_API_URL = 'https://api.cometapi.com/v1/images/generations';
+
+export async function generateImage(prompt: string): Promise<string> {
+    if (!IMAGE_API_KEY) {
+        throw new Error('VITE_COMET_API_KEY mangler i .env');
+    }
+
+    try {
+        const response = await fetch(IMAGE_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${IMAGE_API_KEY}`
+            },
+            body: JSON.stringify({
+                prompt: prompt,
+                model: 'flux-pro', // Using Flux Pro for high quality
+                size: '1024x1024',
+                n: 1
+            })
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[AI] Image generation error:', errorText);
+            throw new Error(`Feil ved bildegenerering: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const imageUrl = data.data?.[0]?.url;
+
+        if (!imageUrl) {
+            throw new Error('Ingen bilde-URL mottatt fra API');
+        }
+
+        return imageUrl;
+
+    } catch (error) {
+        console.error('[AI] Generate image failed:', error);
+        // Fallback to Pollinations if API fails
+        console.log('[AI] Falling back to Pollinations.ai');
+        const seed = Math.floor(Math.random() * 1000);
+        // Truncate prompt drastically to 100 chars to ensure URL safety and remove model param
+        const safePrompt = prompt.substring(0, 100);
+        return `https://pollinations.ai/p/${encodeURIComponent(safePrompt)}?width=1024&height=1024&seed=${seed}&nologo=true`;
+    }
 }

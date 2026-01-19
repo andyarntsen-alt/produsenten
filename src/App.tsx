@@ -12,16 +12,17 @@ import LoginPage from './components/LoginPage';
 import ToolsHub from './components/ToolsHub';
 import { callAI } from './services/ai';
 import { useToast } from './components/ToastContext';
+import { ARCHETYPES, buildSystemPrompt, getDefaultPersona } from './services/personaSystem';
+import type { PersonaKernel } from './services/personaSystem';
 
-// Vibe presets with descriptions (Norwegian)
-const vibePresets = [
-  { label: 'Frekk', description: 'frekk og litt sarkastisk i tonen' },
-  { label: 'Morsom', description: 'morsom, kreativ og gjerne med emojis' },
-  { label: 'Ydmyk', description: 'ydmyk, støttende og vennlig i tonen' },
-  { label: 'Selvsikker', description: 'selvsikker, overbevisende og autoritativ' },
-  { label: 'Ekspert', description: 'ekspert, kunnskapsrik og lærerik i tonen' },
-  { label: 'Direkte', description: 'direkte, konsis og rett på sak' }
-];
+// Vibe presets based on ARCHETYPES from persona system
+const vibePresets = Object.entries(ARCHETYPES).map(([key, config]) => ({
+  label: config.label,
+  key: key as PersonaKernel['archetype'],
+  emoji: config.emoji,
+  description: config.description,
+  toneRules: config.toneRules
+}));
 
 // Data types
 // Data types
@@ -59,6 +60,12 @@ export interface Brand {
   targetAudience?: string;
   postingFrequency?: number; // tweets per week
   goals?: string;
+
+  // Persona Kernel (for AI personality)
+  personaKernel?: {
+    coreBelief?: string;
+    voiceSignature?: string;
+  };
 
   // AI Generated Data
   brandBrief?: BrandBrief;
@@ -110,13 +117,20 @@ async function fetchWebsite(url: string): Promise<string> {
   }
 }
 
-// Chat message type and system message for AI prompts
+// Chat message type for AI prompts
 interface ChatMessage { role: 'system' | 'user' | 'assistant'; content: string; }
-const systemMessage: ChatMessage = {
-  role: 'system',
-  content: 'Du er en AI-assistent som skriver engasjerende og menneskelige innlegg for sosiale medier. ' +
-    'Ikke avslør at du er en AI, og imiter tonen til en kreativ tekstforfatter.'
-};
+
+// Helper to create persona-aware system message
+function createPersonaSystemMessage(brandName: string, vibe: string, coreBelief?: string, voiceSignature?: string, format: 'kort' | 'lang' | 'mixed' = 'mixed'): ChatMessage {
+  const persona = getDefaultPersona(brandName, vibe);
+  if (coreBelief) persona.coreBelief = coreBelief;
+  if (voiceSignature) persona.voiceSignature = voiceSignature;
+
+  return {
+    role: 'system',
+    content: buildSystemPrompt({ persona, platform: 'twitter', format })
+  };
+}
 
 
 
@@ -184,7 +198,9 @@ function App() {
     offer?: string,
     target?: string,
     goals?: string,
-    frequency: number = 5
+    frequency: number = 5,
+    coreBelief?: string,
+    voiceSignature?: string
   ) => {
     setGenMessage('Trinn 1/4: Forsker på merkevaren din...');
     setMode('loading');
@@ -227,7 +243,7 @@ function App() {
 
       Tekst å analysere: """${siteText}"""`;
 
-      const researchJsonStr = await callAI([systemMessage, { role: 'user', content: researchPrompt }]);
+      const researchJsonStr = await callAI([createPersonaSystemMessage(name, vibe), { role: 'user', content: researchPrompt }]);
       let brandBrief: BrandBrief;
       try {
         // Attempt to find JSON if wrapped in markdown
@@ -266,7 +282,7 @@ function App() {
         "strategySummary": "Kort oppsummering av strategien..."
       }`;
 
-      const strategyJsonStr = await callAI([systemMessage, { role: 'user', content: strategyPrompt }]);
+      const strategyJsonStr = await callAI([createPersonaSystemMessage(name, vibe), { role: 'user', content: strategyPrompt }]);
       let contentPillars: string[] = [];
       let strategySummary = "";
       try {
@@ -292,9 +308,9 @@ function App() {
       Tone: ${vibeDesc} (VIKTIG: Ikke bruk "AI-språk", vær menneskelig/agency-style).
       
       Krav til innholdet:
-      - VIKTIG: Lag en miks av KORTE tweets (max 280 tegn) og LENGRE poster/tråder (opp til 1200 tegn).
-      - Minst 30% av postene bør være "long-form" (dypdykk, historier, guider).
-      - Varierte formater: Question, Contrarian, Mini-story, List, Tip, Case study, Long-form.
+      - VIKTIG: Lag en miks av KORTE tweets (punchy), MEDIUM poster, og HELT LANGE ESSAYS (1000+ tegn).
+      - Minst 2 poster MÅ være "Deep Dives" / Essays som går ordentlig i dybden.
+      - Varierte formater: Question, Contrarian, Mini-story, List, Tip, Case study, Deep Dive.
       - Sterk "hook" (første setning) på ALLE poster.
       - Ingen hashtags med mindre det er VELDIG relevant.
       
@@ -310,7 +326,7 @@ function App() {
         ]
       }`;
 
-      const contentJsonStr = await callAI([systemMessage, { role: 'user', content: contentPrompt }]);
+      const contentJsonStr = await callAI([createPersonaSystemMessage(name, vibe), { role: 'user', content: contentPrompt }]);
       let newTweets: Tweet[] = [];
       try {
         const match = contentJsonStr.match(/\{[\s\S]*\}/);
@@ -367,6 +383,10 @@ function App() {
         targetAudience: target,
         postingFrequency: frequency,
         goals,
+        personaKernel: (coreBelief || voiceSignature) ? {
+          coreBelief,
+          voiceSignature
+        } : undefined,
         brandBrief,
         contentPillars,
         ctaList: brandBrief.ctaPhrases || [],
@@ -434,10 +454,11 @@ function App() {
         ${insightPrompt}
         Tone: ${vibeDesc}
         Lag ${tweetCount} nye innlegg. 
-        Miks korte tweets og lengre poster (30% long-form).
+        Miks korte tweets, medium poster, og minst 2 "Deep Dive" essays (1000+ tegn).
+        Variasjon er nøkkelen.
         Returner JSON array "tweets": [{ "hook": "...", "text": "...", "formatType": "...", "mediaIdea": "..." }]`;
 
-      const contentJsonStr = await callAI([systemMessage, { role: 'user', content: contentPrompt }]);
+      const contentJsonStr = await callAI([createPersonaSystemMessage(brand.name, brand.vibe, brand.personaKernel?.coreBelief, brand.personaKernel?.voiceSignature), { role: 'user', content: contentPrompt }]);
 
       let nextTweets: Tweet[] = [];
       try {
@@ -530,7 +551,7 @@ function App() {
       )}
       {mode === 'onboarding' &&
         <Onboarding
-          vibeOptions={vibePresets.map(v => v.label)}
+          vibeOptions={vibePresets}
           onSubmit={handleCreateBrand}
           onCancel={() => setMode(brands.length > 0 ? 'dashboard' : 'landing')}
         />

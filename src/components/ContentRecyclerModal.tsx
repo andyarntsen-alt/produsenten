@@ -1,6 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { X, Recycle, Sparkles } from 'lucide-react';
 import type { Brand, Tweet } from '../App';
+import { callAI } from '../services/ai';
+import { getDefaultPersona, buildSystemPrompt } from '../services/personaSystem';
 
 interface ContentRecyclerModalProps {
     brand: Brand;
@@ -10,6 +12,7 @@ interface ContentRecyclerModalProps {
 
 const ContentRecyclerModal: React.FC<ContentRecyclerModalProps> = ({ brand, onClose, onRecycle }) => {
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
     // Generate stable random scores for posts without metrics (seeded by post index)
     const [randomScores] = useState(() =>
@@ -32,15 +35,58 @@ const ContentRecyclerModal: React.FC<ContentRecyclerModalProps> = ({ brand, onCl
             .slice(0, 10);
     }, [brand.posts, randomScores]);
 
-    const handleRecycle = () => {
+    const handleRecycle = async () => {
         if (selectedIndex === null) return;
+        setIsLoading(true);
         const post = recyclablePosts[selectedIndex];
-        onRecycle({
-            ...post,
-            status: 'draft',
-            text: `[RESIRKULERT] ${post.text}`,
-        });
-        onClose();
+
+        try {
+            // Get persona context
+            const basePersona = getDefaultPersona(brand.name, brand.vibe);
+            const persona = brand.personaKernel ? { ...basePersona, ...brand.personaKernel } : basePersona;
+
+            // Build persona system prompt
+            const systemContent = buildSystemPrompt({
+                persona,
+                platform: 'linkedin', // Defaulting to LinkedIn/Long-form style for recycling usually
+                format: 'lang',
+                goal: 'engasjering'
+            });
+
+            // Specific prompt for recycling with stronger humanizer instructions
+            const userPrompt = `Jeg vil at du skal omskrive denne gamle posten slik at den føles helt ny og frisk.
+            
+GAMMEL POST:
+"${post.text}"
+
+DINE INSTRUKSER:
+1. Behold kjernebudskapet (hva handlet den om?)
+2. Endre vinklingen (start med hook, spørsmål eller konklusjon)
+3. Gjør språket mer muntlig og naturlig ("humanizer")
+4. Fjern alle klisjeer
+5. IKKE bruk merkelapper som [RESIRKULERT]. Det skal se ut som en helt ny tanke.
+
+Returner KUN den nye teksten.`;
+
+            const recycledText = await callAI([
+                { role: 'system', content: systemContent },
+                { role: 'user', content: userPrompt }
+            ]);
+
+            onRecycle({
+                ...post,
+                status: 'draft',
+                text: recycledText.replace(/^["']|["']$/g, '').trim(),
+            });
+
+            onClose();
+
+        } catch (error) {
+            console.error('Recycle failed:', error);
+            alert('Kunne ikke resirkulere innhold. Sjekk konsollen.');
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     return (
@@ -80,14 +126,14 @@ const ContentRecyclerModal: React.FC<ContentRecyclerModalProps> = ({ brand, onCl
                                         key={i}
                                         onClick={() => setSelectedIndex(i)}
                                         className={`w-full text-left p-4 rounded-xl border-2 transition-all ${selectedIndex === i
-                                                ? 'border-green-500 bg-green-50'
-                                                : 'border-gray-200 hover:border-green-300'
+                                            ? 'border-green-500 bg-green-50'
+                                            : 'border-gray-200 hover:border-green-300'
                                             }`}
                                     >
                                         <div className="flex items-start gap-4">
                                             <div className={`shrink-0 w-12 h-12 rounded-full flex items-center justify-center font-bold text-sm ${post.performanceScore >= 70 ? 'bg-green-100 text-green-700' :
-                                                    post.performanceScore >= 50 ? 'bg-yellow-100 text-yellow-700' :
-                                                        'bg-gray-100 text-gray-600'
+                                                post.performanceScore >= 50 ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-gray-100 text-gray-600'
                                                 }`}>
                                                 {post.performanceScore}%
                                             </div>
@@ -104,11 +150,15 @@ const ContentRecyclerModal: React.FC<ContentRecyclerModalProps> = ({ brand, onCl
 
                             <button
                                 onClick={handleRecycle}
-                                disabled={selectedIndex === null}
+                                disabled={selectedIndex === null || isLoading}
                                 className="w-full bg-green-600 hover:bg-green-700 text-white py-4 rounded-xl font-bold text-sm uppercase tracking-wider disabled:opacity-50 flex items-center justify-center gap-2 transition-all"
                             >
-                                <Sparkles size={18} />
-                                Resirkuler denne posten
+                                {isLoading ? (
+                                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                                ) : (
+                                    <Sparkles size={18} />
+                                )}
+                                {isLoading ? 'Resirkulerer...' : 'Resirkuler denne posten'}
                             </button>
                         </>
                     )}

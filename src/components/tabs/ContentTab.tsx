@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { Brand, Tweet } from '../../App';
-import { callAI } from '../../services/ai';
+import { callAI, generateImage as apiGenerateImage } from '../../services/ai';
 import TweetPreview from '../TweetPreview';
 import HookLabModal from '../HookLabModal';
 import VoiceRecorderModal from '../VoiceRecorderModal';
@@ -9,7 +9,7 @@ import { useToast } from '../ToastContext';
 
 interface ContentTabProps {
     brand: Brand;
-    vibePresets: { label: string; description: string; }[];
+    vibePresets: { label: string; key: string; emoji: string; description: string; toneRules: string[]; }[];
     updateBrand: (brand: Brand) => void;
 }
 
@@ -145,6 +145,57 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
         updateTweet(index, { thread: newThread });
     };
 
+    // Generate AI-powered long-form post (thread style) from the original tweet
+    const generateThread = async (index: number) => {
+        const tweet = brand.posts[index];
+        const originalText = tweet.text;
+
+        // Show loading state
+        updateTweet(index, {
+            thread: [{ text: 'Skriver long-form post...', hook: '', status: 'draft', formatType: 'other' }]
+        });
+
+        try {
+            const vibeDesc = vibePresets.find(v => v.label === brand.vibe)?.description || brand.vibe;
+
+            const prompt = `Du er en ekspert på long-form content på X (tidligere Twitter).
+            
+Din oppgave: Utvid denne tweeten til en lang, sammenhengende tekst (500-1000 tegn).
+
+Start-tweet: "${originalText}"
+
+Tone: ${vibeDesc}
+
+Krav:
+- Dette skal være ÉN lang tekst, ikke flere tweets.
+- Bruk linjeskift for å skape luft.
+- Gå i dybden, bruk eksempler.
+- Start rett på sak, ingen intro.
+
+Format:
+Returner teksten som ren tekst.`;
+
+            const systemMsg = { role: 'system' as const, content: 'Du er en kreativ tekstforfatter.' };
+            const result = await callAI([systemMsg, { role: 'user', content: prompt }]);
+
+            // Create just ONE thread item with the long text
+            const newThread: Tweet[] = [{
+                text: result.trim(),
+                hook: '',
+                status: 'draft' as const,
+                formatType: 'other' as const
+            }];
+
+            updateTweet(index, { thread: newThread });
+            showToast('Long-form post generert!', 'success');
+
+        } catch (err) {
+            console.error('Long-form generation failed:', err);
+            showToast('Kunne ikke generere post. Prøv igjen.', 'error');
+            updateTweet(index, { thread: undefined });
+        }
+    };
+
     const updateThreadItem = (postIndex: number, threadIndex: number, field: string, value: string) => {
         const currentPost = brand.posts[postIndex];
         if (!currentPost.thread) return;
@@ -185,17 +236,50 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
         setShowMetrics(false);
     };
 
-    const generateImage = (index: number) => {
+    const generateImage = async (index: number) => {
         const tweet = brand.posts[index];
-        const prompt = tweet.mediaIdea || tweet.text.substring(0, 50);
-        if (!prompt) return;
+        const rawInput = tweet.mediaIdea || tweet.text;
 
-        // Use Pollinations.ai for instant, free image generation
-        // Append random seed to avoid caching same image for same prompt if retried
-        const seed = Math.floor(Math.random() * 1000);
-        const url = `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1080&height=1080&seed=${seed}&nologo=true`;
+        if (!rawInput) return;
 
-        updateTweet(index, { imageUrl: url });
+        showToast('Analyserer bildekonsept... 🧠', 'info');
+
+        try {
+            // 1. Optimize prompt via LLM (Norwegian -> English Midjourney/Flux style)
+            const optimizationPrompt = `Du er en ekspert på AI-kunstprompts (Midjourney/Flux).
+Din oppgave: Lag en detaljert, visuell bilde-prompt på ENGELSK basert på denne teksten.
+Teksten er fra en social media post: "${rawInput}"
+
+Regler:
+- Beskriv et visuelt motiv som passer teksten (metaforisk eller direkte).
+- Stilen skal være: ${brand.vibe || 'Moderne, high quality photography'}.
+- Ingen tekst i bildet.
+- Returner KUN den engelske prompten.`;
+
+            const optimizedPrompt = await callAI([
+                { role: 'system', content: 'You are an expert image prompter.' },
+                { role: 'user', content: optimizationPrompt }
+            ]);
+
+            console.log('[Image Prompt Optimized]:', optimizedPrompt);
+            showToast('Genererer bilde... 🎨', 'info');
+
+            // 2. Generate image with optimized prompt
+            const url = await apiGenerateImage(optimizedPrompt);
+            updateTweet(index, { imageUrl: url });
+            showToast('Bilde generert!', 'success');
+
+        } catch (err) {
+            console.error('Image generation failed:', err);
+            showToast('Kunne ikke generere bilde. Prøver fallback...', 'warning');
+
+            // Fallback: Use raw input with simple translation/cleanup if possible, 
+            // but for now just use the raw input as best effort or a simple abstract fallback
+            const seed = Math.floor(Math.random() * 1000);
+            const fallbackPrompt = "abstract modern minimalist composition, high quality, 4k";
+            const fallbackUrl = `https://image.pollinations.ai/prompt/${encodeURIComponent(fallbackPrompt)}?width=1080&height=1080&seed=${seed}&nologo=true&model=flux`;
+            updateTweet(index, { imageUrl: fallbackUrl });
+        }
     };
 
     return (
@@ -323,8 +407,16 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
                                         <div className="flex-1 space-y-4">
                                             <TweetPreview tweet={tweet} brand={brand} />
                                             {tweet.imageUrl && (
-                                                <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm">
-                                                    <img src={tweet.imageUrl} alt="AI Generated" className="w-full h-auto" />
+                                                <div className="rounded-xl overflow-hidden border border-gray-100 shadow-sm relative min-h-[200px] bg-gray-50 flex items-center justify-center">
+                                                    <img
+                                                        src={tweet.imageUrl}
+                                                        alt="AI Generated"
+                                                        className="w-full h-auto"
+                                                        onError={(e) => {
+                                                            e.currentTarget.onerror = null;
+                                                            e.currentTarget.src = `https://placehold.co/1024x1024/EEE/31343C?text=Load+Failed`;
+                                                        }}
+                                                    />
                                                 </div>
                                             )}
                                         </div>
@@ -339,7 +431,7 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
 
                                             <button onClick={() => startEditing(idx)} className="w-full bg-gray-50 hover:bg-gray-100 text-brand-text py-2 rounded-lg text-xs uppercase tracking-wider transition-colors">Rediger</button>
                                             <button onClick={() => regenerateTweet(idx)} className="w-full bg-gray-50 hover:bg-gray-100 text-brand-text py-2 rounded-lg text-xs uppercase tracking-wider transition-colors">Ny versjon</button>
-                                            <button onClick={() => addThreadItem(idx)} className="w-full bg-gray-50 hover:bg-gray-100 text-brand-text py-2 rounded-lg text-xs uppercase tracking-wider transition-colors">Lag Tråd 🧵</button>
+                                            <button onClick={() => generateThread(idx)} className="w-full bg-brand-gold/10 hover:bg-brand-gold/20 text-brand-gold py-2 rounded-lg text-xs uppercase tracking-wider transition-colors font-bold">Lag Tråd 🧵</button>
                                             <button onClick={() => generateImage(idx)} className="w-full bg-pink-50 hover:bg-pink-100 text-pink-700 py-2 rounded-lg text-xs uppercase tracking-wider transition-colors">Generer Bilde 🎨</button>
                                             <button onClick={() => shortenTweet(idx)} className="w-full bg-gray-50 hover:bg-gray-100 text-brand-text py-2 rounded-lg text-xs uppercase tracking-wider transition-colors">Kort ned</button>
                                             <button onClick={() => generateLinkedInVersion(idx)} className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 py-2 rounded-lg text-xs uppercase tracking-wider transition-colors">LinkedIn Remix</button>
@@ -358,51 +450,49 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
 
                                     {/* Thread Rendering */}
                                     {tweet.thread && tweet.thread.length > 0 && (
-                                        <div className="mt-6 ml-4 pl-6 border-l-2 border-brand-gold/20 space-y-6">
+                                        <div className="mt-6 ml-4 pl-6 border-l-2 border-brand-gold/30 space-y-4">
+                                            <div className="text-xs font-bold text-brand-gold uppercase tracking-wider mb-2">
+                                                🧵 Tråd ({tweet.thread.length} svar)
+                                            </div>
                                             {tweet.thread.map((reply, tIndex) => (
                                                 <div key={tIndex} className="relative bg-gray-50 p-4 rounded-lg border border-gray-100">
                                                     {/* Connector dot */}
-                                                    <div className="absolute -left-[31px] top-6 w-3 h-3 rounded-full bg-brand-gold/20 border-2 border-brand-bg"></div>
+                                                    <div className="absolute -left-[31px] top-6 w-3 h-3 rounded-full bg-brand-gold border-2 border-brand-bg"></div>
 
-                                                    {editIndex === idx ? (
-                                                        <textarea
-                                                            value={reply.text}
-                                                            onChange={(e) => updateThreadItem(idx, tIndex, 'text', e.target.value)}
-                                                            className="w-full bg-white p-3 rounded border border-gray-200 text-sm font-sans min-h-[80px] focus:ring-1 focus:ring-brand-gold/50 outline-none"
-                                                            placeholder="Skriv trådsvar..."
-                                                        />
-                                                    ) : (
-                                                        <div className="prose prose-sm max-w-none">
-                                                            <TweetPreview tweet={reply} brand={brand} />
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-xs text-gray-400">Svar {tIndex + 1}</span>
+                                                        <button
+                                                            onClick={() => {
+                                                                const newThread = tweet.thread?.filter((_, i) => i !== tIndex) || [];
+                                                                updateTweet(idx, { thread: newThread.length > 0 ? newThread : undefined });
+                                                            }}
+                                                            className="text-red-400 hover:text-red-600 text-xs"
+                                                        >
+                                                            ✕ Fjern
+                                                        </button>
+                                                    </div>
+
+                                                    <textarea
+                                                        value={reply.text}
+                                                        onChange={(e) => updateThreadItem(idx, tIndex, 'text', e.target.value)}
+                                                        className="w-full bg-white p-4 rounded-xl border border-gray-200 text-base font-sans min-h-[500px] focus:ring-2 focus:ring-brand-gold/50 outline-none resize-y"
+                                                        placeholder="Skriv lang-form innhold her..."
+                                                    />
+
+                                                    {reply.text && (
+                                                        <div className="mt-2 text-xs text-gray-400">
+                                                            {reply.text.length} tegn
                                                         </div>
                                                     )}
                                                 </div>
                                             ))}
-                                        </div>
-                                    )}
 
-                                    {/* Thread Rendering */}
-                                    {tweet.thread && tweet.thread.length > 0 && (
-                                        <div className="mt-6 ml-4 pl-6 border-l-2 border-brand-gold/20 space-y-6">
-                                            {tweet.thread.map((reply, tIndex) => (
-                                                <div key={tIndex} className="relative bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                                    {/* Connector dot */}
-                                                    <div className="absolute -left-[31px] top-6 w-3 h-3 rounded-full bg-brand-gold/20 border-2 border-brand-bg"></div>
-
-                                                    {editIndex === idx ? (
-                                                        <textarea
-                                                            value={reply.text}
-                                                            onChange={(e) => updateThreadItem(idx, tIndex, 'text', e.target.value)}
-                                                            className="w-full bg-white p-3 rounded border border-gray-200 text-sm font-sans min-h-[80px] focus:ring-1 focus:ring-brand-gold/50 outline-none"
-                                                            placeholder="Skriv trådsvar..."
-                                                        />
-                                                    ) : (
-                                                        <div className="prose prose-sm max-w-none">
-                                                            <TweetPreview tweet={reply} brand={brand} />
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
+                                            <button
+                                                onClick={() => addThreadItem(idx)}
+                                                className="w-full py-2 border-2 border-dashed border-brand-gold/30 text-brand-gold/60 hover:border-brand-gold hover:text-brand-gold rounded-lg text-sm transition-colors"
+                                            >
+                                                + Legg til flere svar
+                                            </button>
                                         </div>
                                     )}
 

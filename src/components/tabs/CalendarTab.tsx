@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
+import { X, Calendar as CalIcon, Clock } from 'lucide-react';
 import type { Brand, Tweet } from '../../App';
+import TweetPreview from '../TweetPreview';
 
 interface CalendarTabProps {
     brand: Brand;
@@ -8,6 +10,7 @@ interface CalendarTabProps {
 
 const CalendarTab: React.FC<CalendarTabProps> = ({ brand }) => {
     const [currentDate, setCurrentDate] = useState(new Date());
+    const [selectedPost, setSelectedPost] = useState<Tweet | null>(null);
 
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
@@ -61,13 +64,18 @@ const CalendarTab: React.FC<CalendarTabProps> = ({ brand }) => {
 
                     <div className="mt-2 space-y-1 overflow-y-auto max-h-[85px] no-scrollbar">
                         {posts.map((post, idx) => (
-                            <div key={idx} className="text-[10px] p-1.5 rounded bg-brand-bg border border-gray-200 shadow-sm hover:border-brand-gold transition-colors cursor-default" title={post.text}>
+                            <button
+                                key={idx}
+                                onClick={() => setSelectedPost(post)}
+                                className="w-full text-left text-[10px] p-1.5 rounded bg-brand-bg border border-gray-200 shadow-sm hover:border-brand-gold transition-colors hover:shadow-md"
+                                title="Klikk for å se detaljer"
+                            >
                                 <div className="flex items-center gap-1">
                                     <div className={`w-1.5 h-1.5 rounded-full ${post.status === 'approved' ? 'bg-green-500' : 'bg-orange-400'}`}></div>
                                     <span className="truncate font-medium text-brand-text">{post.formatType || 'Post'}</span>
                                 </div>
                                 <div className="truncate text-brand-text/70 mt-0.5">{post.hook}</div>
-                            </div>
+                            </button>
                         ))}
                     </div>
                 </div>
@@ -111,6 +119,56 @@ const CalendarTab: React.FC<CalendarTabProps> = ({ brand }) => {
                     <div className="w-2 h-2 rounded-full bg-orange-400"></div> Utkast
                 </div>
             </div>
+
+            {/* Post Detail Modal */}
+            {selectedPost && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-brand-text/20 backdrop-blur-sm animate-fade-in" onClick={() => setSelectedPost(null)}>
+                    <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl border border-white/50 overflow-hidden flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                            <div className="flex items-center gap-2">
+                                <span className={`px-2 py-1 text-[10px] uppercase font-bold tracking-wider rounded ${selectedPost.status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
+                                    {selectedPost.status === 'approved' ? 'Publiseringsklar' : 'Utkast'}
+                                </span>
+                                <span className="text-gray-400 text-sm flex items-center gap-1">
+                                    <CalIcon size={14} /> {selectedPost.date}
+                                </span>
+                            </div>
+                            <button onClick={() => setSelectedPost(null)} className="text-gray-400 hover:text-brand-text transition-colors">
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 overflow-y-auto">
+                            <TweetPreview tweet={selectedPost} brand={brand} />
+                            {selectedPost.imageUrl && (
+                                <div className="mt-4 rounded-xl overflow-hidden border border-gray-100 shadow-sm">
+                                    <img src={selectedPost.imageUrl} alt="Post content" className="w-full h-auto" />
+                                </div>
+                            )}
+
+                            {selectedPost.thread && selectedPost.thread.length > 0 && (
+                                <div className="mt-6 pl-4 border-l-2 border-brand-gold/20 space-y-4">
+                                    <p className="text-xs font-bold text-gray-400 uppercase">Tråd ({selectedPost.thread.length} deler)</p>
+                                    {selectedPost.thread.map((t, i) => (
+                                        <div key={i} className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                                            {t.text}
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {selectedPost.linkedInPost && (
+                                <div className="mt-6 pt-6 border-t border-gray-100">
+                                    <span className="text-xs font-bold text-blue-700 uppercase tracking-wider bg-blue-50 px-2 py-1 rounded mb-2 inline-block">LinkedIn Versjon</span>
+                                    <div className="text-sm whitespace-pre-wrap text-gray-700 leading-relaxed font-sans">
+                                        {selectedPost.linkedInPost}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

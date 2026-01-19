@@ -26,23 +26,34 @@ const BioGeneratorModal: React.FC<BioGeneratorModalProps> = ({ onClose }) => {
                 tiktok: '80 tegn'
             };
 
-            const prompt = `Du er en ekspert på sosiale medier-profiler. Lag 5 forskjellige bio-forslag for ${platform}.
+            const prompt = `Du er en ekspert på personlig merkevarebygging. Lag 5 PROFESJONELLE og ENGASJERENDE bio-forslag for ${platform}.
 
 Stikkord om personen/brandet:
 "${keywords}"
 
+Målet er å konvertere besøkende til følgere/kunder.
+
+Struktur-tips (bruk variasjon):
+1. The Authority: [Tittel] | Hjelper X med Y | CTA
+2. The Listicle: 
+   📍 Sted
+   🚀 Hva jeg gjør
+   👉 CTA
+3. The Personal: [Lidenskap] + [Jobb] + [Fun fact]
+4. The Minimalist: Konsis verdiforslag. URL.
+
 Regler:
-- Maks ${platformLimits[platform]}
-- Inkluder emojis der det passer
-- Vær kreativ og engasjerende
-- Varier stilen (profesjonell, leken, mystisk, direkte, personlig)
+- Maks ${platformLimits[platform]} (Viktig!)
+- Bruk linjeskift der det passer (spesielt for Instagram/TikTok) (Bruk \\n for linjeskift)
+- Bruk relevante emojis som kulepunkter
+- Vær unik, unngå klisjeer
 - Norsk språk
 
 Returner som JSON array av strenger:
-["Bio 1", "Bio 2", "Bio 3", "Bio 4", "Bio 5"]`;
+["Bio 1 tekst...", "Bio 2 tekst..."]`;
 
             const result = await callAI([
-                { role: 'system', content: 'Du er en bio-skribent. Svar kun med JSON array.' },
+                { role: 'system', content: 'Du er en ekspert på sosiale medier bios. Svar kun med JSON array.' },
                 { role: 'user', content: prompt }
             ]);
 
@@ -52,11 +63,11 @@ Returner som JSON array av strenger:
                 setBios(parsed);
             } catch {
                 setBios([
-                    "✨ Skaper innhold som inspirerer | 📍 Oslo | DM for samarbeid 💌",
-                    "Din guide til [nisje] 🚀 | Hjelper deg med [verdi] | Link i bio 👇",
-                    "🎯 [Hva du gjør] | 💡 [Hva du deler] | 🌟 [Personlig touch]",
-                    "[Tittel] by day, [hobby] by night 🌙 | Deler tips om [tema]",
-                    "Making [tema] less boring since [år] 💥 | Kontakt: [email]"
+                    "🚀 Skaper innhold som konverterer\n📍 Oslo\n👇 Last ned guiden min",
+                    "Hjelper bedrifter å vokse på nett 📈\n—\nDaglig leder @dittfirma\nSend DM for samarbeid 💌",
+                    "Din go-to for [nisje] 🌱\n✨ Tips & triks hver dag\n🔗 Link i bio",
+                    "Kreativ sjel med sans for [tema] 🎨 | Deler reisen min 🌍 | Bli med backstage 👇",
+                    "Offisiell konto for [navn] ✅\nBuilding the future of [bransje] 🚀"
                 ]);
             }
         } catch (err) {
@@ -138,7 +149,7 @@ Returner som JSON array av strenger:
                                     key={i}
                                     className="p-4 bg-gray-50 rounded-xl border border-gray-200 hover:border-violet-300 transition-all group"
                                 >
-                                    <p className="text-gray-800 text-sm leading-relaxed mb-3">{bio}</p>
+                                    <p className="text-gray-800 text-sm leading-relaxed mb-3 whitespace-pre-wrap">{bio}</p>
                                     <div className="flex items-center justify-between">
                                         <span className="text-xs text-gray-400">{bio.length} tegn</span>
                                         <button

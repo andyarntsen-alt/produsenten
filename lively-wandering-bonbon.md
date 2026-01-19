@@ -3,7 +3,7 @@
 ## KRITISK (Fiks først)
 
 ### Sikkerhet
-- [ ] **Roter API-nøkler** - Gemini og Resend nøkler er eksponert
+- [ ] **Roter API-nøkler** - AIML og Resend nøkler er eksponert
 - [ ] **Flytt API-kall til backend** - API-nøkler synlige i nettleser (`ai.ts:58`, `ExportTab.tsx:56`)
 - [ ] **Forbedre input-validering** - URL-validering og HTML-sanitering (`App.tsx:75-111`)
 
