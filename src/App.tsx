@@ -9,6 +9,7 @@ import ContactPage from './components/ContactPage';
 import CookieBanner from './components/CookieBanner';
 import SettingsPage from './components/SettingsPage';
 import LoginPage from './components/LoginPage';
+import ToolsHub from './components/ToolsHub';
 import { callAI } from './services/ai';
 
 // Vibe presets with descriptions (Norwegian)
@@ -176,7 +177,7 @@ function App() {
     return saved ? JSON.parse(saved) : [];
   });
   const [currentBrandId, setCurrentBrandId] = useState<string | null>(null);
-  const [mode, setMode] = useState<'landing' | 'onboarding' | 'dashboard' | 'loading' | 'workspace' | 'about' | 'pricing' | 'contact' | 'settings' | 'login'>('landing');
+  const [mode, setMode] = useState<'landing' | 'onboarding' | 'dashboard' | 'loading' | 'workspace' | 'about' | 'pricing' | 'contact' | 'settings' | 'login' | 'tools'>('landing');
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('isAuthenticated'));
   const [genMessage, setGenMessage] = useState('');
@@ -558,8 +559,16 @@ function App() {
           onAddNew={() => setMode('onboarding')}
           onUpdateBrand={updateBrand}
           onGoToSettings={() => setMode('settings')}
+          onGoToTools={() => setMode('tools')}
         />
       }
+      {mode === 'tools' && brands.length > 0 && (
+        <ToolsHub
+          brand={brands[0]}
+          updateBrand={updateBrand}
+          onBack={() => setMode('dashboard')}
+        />
+      )}
       {mode === 'workspace' && currentBrand &&
         <Workspace
           brand={currentBrand}

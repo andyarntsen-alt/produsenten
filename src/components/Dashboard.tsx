@@ -3,7 +3,7 @@ import type { Brand } from '../App';
 import GlobalCalendar from './GlobalCalendar';
 import AnalyticsView from './AnalyticsView';
 import MediaKitModal from './MediaKitModal';
-import { Settings, BarChart2, FileText } from 'lucide-react';
+import { Settings, BarChart2, FileText, Wrench } from 'lucide-react';
 
 interface DashboardProps {
     brands: Brand[];
@@ -11,9 +11,10 @@ interface DashboardProps {
     onAddNew: () => void;
     onUpdateBrand: (brand: Brand) => void;
     onGoToSettings: () => void;
+    onGoToTools?: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpdateBrand, onGoToSettings }) => {
+const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpdateBrand, onGoToSettings, onGoToTools }) => {
     const [view, setView] = useState<'grid' | 'calendar' | 'analytics'>('grid');
     const [streak, setStreak] = useState(0);
     const [showMediaKit, setShowMediaKit] = useState(false);
@@ -95,6 +96,16 @@ const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpd
                         >
                             <FileText size={20} className="group-hover:scale-110 transition-transform" />
                         </button>
+
+                        {onGoToTools && (
+                            <button
+                                onClick={onGoToTools}
+                                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white p-3 rounded-full transition-all shadow-sm group"
+                                title="Verktøykassen"
+                            >
+                                <Wrench size={20} className="group-hover:rotate-12 transition-transform" />
+                            </button>
+                        )}
 
                         <button
                             onClick={onGoToSettings}
