@@ -89,7 +89,16 @@ async function fetchWebsite(url: string): Promise<string> {
   // For this demo, we'll try fetch, but if it fails (likely), we might mock it or assume the user inputs text.
   // Ideally, use a proxy or server function.
   try {
-    const res = await fetch(url);
+    let res;
+    try {
+      res = await fetch(url);
+    } catch (e) {
+      // Direct fetch failed (CORS), try proxy
+      console.log('Direct fetch failed, trying proxy...');
+      const proxyUrl = 'https://corsproxy.io/?' + encodeURIComponent(url);
+      res = await fetch(proxyUrl);
+    }
+
     if (!res.ok) throw new Error('Failed to fetch website content');
     const html = await res.text();
     // Strip script and style content
@@ -449,10 +458,19 @@ function App() {
       const vibeDesc = vibePresets.find(v => v.label === brand.vibe)?.description || brand.vibe;
       const tweetCount = Math.min((brand.postingFrequency || 5) * 4, 12);
 
+      // Collect previous hooks to avoid repetition
+      const previousContent = [...(brand.prevPosts || []), ...brand.posts]
+        .slice(-15) // Look at last 15 posts
+        .map(p => `"${p.hook}"`)
+        .join(', ');
+
       const contentPrompt = `Du er en profesjonell tekstforfatter. Det er ny måned for ${brand.name}.
         Brand Brief: ${JSON.stringify(brand.brandBrief)}
         ${insightPrompt}
         Tone: ${vibeDesc}
+        
+        NEGATIVE CONSTRAINT (VIKTIG): Unngå å gjenta disse temaene eller vinklingene nøyaktig: [${previousContent}]. Lag noe NYTT og unikt.
+
         Lag ${tweetCount} nye innlegg. 
         Miks korte tweets, medium poster, og minst 2 "Deep Dive" essays (1000+ tegn).
         Variasjon er nøkkelen.

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Search, Eye, Sparkles } from 'lucide-react';
 import { callAI } from '../services/ai';
+import { fetchWebsite } from '../services/scraper';
 
 interface CompetitorSpyModalProps {
     onClose: () => void;
@@ -14,6 +15,7 @@ interface CompetitorAnalysis {
     recentPosts: string[];
     strategy: string;
     opportunities: string[];
+    source?: string;
 }
 
 const CompetitorSpyModal: React.FC<CompetitorSpyModalProps> = ({ onClose }) => {
@@ -27,57 +29,71 @@ const CompetitorSpyModal: React.FC<CompetitorSpyModalProps> = ({ onClose }) => {
         setAnalysis(null);
 
         try {
-            const prompt = `Du er en sosiale medier-analytiker. "Analyser" konkurrenten @${username} (dette er en simulering for demo-formål).
+            // Attempt to fetch real context if possible (scraper might hit auth wall, but worth a try for public profiles)
+            let realContext = "";
+            let source = "Simulation";
 
-Lag en realistisk analyse med:
-1. Antatt følgertall
+            try {
+                // Try to guess URL based on input (simple heuristic)
+                const targetUrl = username.includes('.') ? username : `instagram.com/${username.replace('@', '')}`;
+                console.log('Attempting to spy on:', targetUrl);
+
+                // We use our scraper to get what we can (meta tags, bio, public info)
+                const scrapedText = await fetchWebsite(targetUrl);
+                if (scrapedText && scrapedText.length > 50) {
+                    realContext = `\n\nFANTISK DATA FRA PROFILEN (Bruk dette hvis relevant):\n${scrapedText.substring(0, 2000)}`;
+                    source = "Live Data";
+                }
+            } catch (ignored) {
+                console.log('Scraping failed, falling back to pure AI knowledge');
+            }
+
+            const prompt = `Du er en ekspert sosiale medier-analytiker.
+Oppgave: Analyser profilen "${username}".
+${realContext}
+
+Vis dataen finnes i "FAKTISK DATA", bruk den. Hvis ikke, bruk din generelle kunnskap om denne nichen/profilen eller simuler en realistisk profil basert på brukernavnet.
+
+Lag en strategisk analyse med:
+1. Estimerte følgere (hvis ukjent, gjett basert på "vibe" eller niche)
 2. Posting-frekvens
-3. Topp 3 innholdstyper de bruker
-4. 3 eksempler på nylige post-ideer
-5. Kort strategi-oppsummering
-6. 3 muligheter du kan utnytte
+3. Topp 3 innholdstyper
+4. 3 konkrete eksempler på nylige post-ideer (realistiske)
+5. Strategi-oppsummering
+6. 3 muligheter for forbedring/angrep
 
-Returner som JSON:
+Returner KUN JSON i dette formatet:
 {
   "username": "@${username}",
-  "followers": "50K",
-  "postingFrequency": "2-3 ganger daglig",
-  "topContentTypes": ["Tips", "Behind the scenes", "Reels"],
-  "recentPosts": ["Ide 1...", "Ide 2...", "Ide 3..."],
-  "strategy": "Kort oppsummering...",
+  "followers": "Est. 15K",
+  "postingFrequency": "Daglig",
+  "topContentTypes": ["Sjanger 1", "Sjanger 2", "Sjanger 3"],
+  "recentPosts": ["Tittel 1...", "Tittel 2...", "Tittel 3..."],
+  "strategy": "Kort beskrivelse av strategien...",
   "opportunities": ["Mulighet 1", "Mulighet 2", "Mulighet 3"]
 }`;
 
             const result = await callAI([
-                { role: 'system', content: 'Du er en sosiale medier-ekspert. Svar kun med JSON.' },
+                { role: 'system', content: 'Du er en JSON-maskin. Svar kun gyldig JSON.' },
                 { role: 'user', content: prompt }
             ]);
 
             try {
-                const match = result.match(/\{[\s\S]*\}/);
-                const parsed = JSON.parse(match ? match[0] : result);
-                setAnalysis(parsed);
-            } catch {
-                setAnalysis({
-                    username: `@${username}`,
-                    followers: '25K-100K',
-                    postingFrequency: '1-2 ganger daglig',
-                    topContentTypes: ['Personlige historier', 'Tips og triks', 'Behind the scenes'],
-                    recentPosts: [
-                        'Deler en personlig opplevelse med følgerne',
-                        'Gir 5 tips innenfor sin nisje',
-                        'Viser frem hverdagen sin i Stories'
-                    ],
-                    strategy: 'Fokuserer på autentisitet og personlig branding. Bruker mye video-innhold.',
-                    opportunities: [
-                        'Lag mer edukativt innhold - de mangler dette',
-                        'Post på andre tidspunkter enn dem',
-                        'Samarbeid med andre i samme nisje'
-                    ]
-                });
+                // Clean markdown code blocks if present
+                const cleanResult = result.replace(/```json/g, '').replace(/```/g, '');
+                const match = cleanResult.match(/\{[\s\S]*\}/);
+                const parsed = JSON.parse(match ? match[0] : cleanResult);
+                setAnalysis({ ...parsed, source });
+            } catch (parseErr) {
+                console.error('JSON Parse failed:', parseErr);
+                // Fallback hardcoded if AI creates garbage
+                throw new Error('Kunne ikke tolke AI-responsen');
             }
         } catch (err) {
             console.error('Analysis failed:', err);
+            // Show error to user via simple alert or specific UI state, 
+            // for now lets set a dummy "Error" analysis so they see something happened
+            alert('Kunne ikke analysere akkurat nå. Prøv igjen.');
         } finally {
             setIsLoading(false);
         }
@@ -188,7 +204,7 @@ Returner som JSON:
                             </div>
 
                             <p className="text-xs text-gray-400 text-center">
-                                ⚠️ Dette er en AI-generert simulering for demo-formål
+                                ⚠️ {analysis.source === 'Live Data' ? 'Basert på faktisk data hentet fra nettet' : 'Dette er en AI-generert simulering (kunne ikke hente live data)'}
                             </p>
                         </div>
                     )}

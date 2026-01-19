@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Calendar as CalIcon, Clock } from 'lucide-react';
+import { X, Calendar as CalIcon } from 'lucide-react';
 import type { Brand, Tweet } from '../../App';
 import TweetPreview from '../TweetPreview';
 
