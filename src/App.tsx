@@ -8,6 +8,7 @@ import PricingPage from './components/PricingPage';
 import ContactPage from './components/ContactPage';
 import CookieBanner from './components/CookieBanner';
 import SettingsPage from './components/SettingsPage';
+import LoginPage from './components/LoginPage';
 import { callAI } from './services/ai';
 
 // Vibe presets with descriptions (Norwegian)
@@ -170,9 +171,14 @@ function parseTweets(text: string): string[] {
 }
 
 function App() {
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [brands, setBrands] = useState<Brand[]>(() => {
+    const saved = localStorage.getItem('brands');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [currentBrandId, setCurrentBrandId] = useState<string | null>(null);
-  const [mode, setMode] = useState<'landing' | 'onboarding' | 'dashboard' | 'loading' | 'workspace' | 'about' | 'pricing' | 'contact' | 'settings'>('landing');
+  const [mode, setMode] = useState<'landing' | 'onboarding' | 'dashboard' | 'loading' | 'workspace' | 'about' | 'pricing' | 'contact' | 'settings' | 'login'>('landing');
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_isAuthenticated, setIsAuthenticated] = useState(() => !!localStorage.getItem('isAuthenticated'));
   const [genMessage, setGenMessage] = useState('');
 
   useEffect(() => {
@@ -563,6 +569,16 @@ function App() {
           onGenerateNext={() => handleGenerateNextBatch(currentBrand.id)}
         />
       }
+      {mode === 'login' && (
+        <LoginPage
+          onBack={() => setMode('landing')}
+          onLogin={() => {
+            setIsAuthenticated(true);
+            localStorage.setItem('isAuthenticated', 'true');
+            setMode('dashboard');
+          }}
+        />
+      )}
       <CookieBanner />
     </div>
   );

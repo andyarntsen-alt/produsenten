@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import type { Brand } from '../App';
 import GlobalCalendar from './GlobalCalendar';
 import AnalyticsView from './AnalyticsView';
-import { Settings, BarChart2 } from 'lucide-react';
+import MediaKitModal from './MediaKitModal';
+import { Settings, BarChart2, FileText } from 'lucide-react';
 
 interface DashboardProps {
     brands: Brand[];
@@ -14,6 +15,39 @@ interface DashboardProps {
 
 const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpdateBrand, onGoToSettings }) => {
     const [view, setView] = useState<'grid' | 'calendar' | 'analytics'>('grid');
+    const [streak, setStreak] = useState(0);
+    const [showMediaKit, setShowMediaKit] = useState(false);
+
+    React.useEffect(() => {
+        const lastVisit = localStorage.getItem('lastVisit');
+        const currentStreak = parseInt(localStorage.getItem('streak') || '0');
+        const today = new Date().toISOString().split('T')[0];
+
+        if (lastVisit !== today) {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+            let newStreak = 1;
+            if (lastVisit === yesterdayStr) {
+                newStreak = currentStreak + 1;
+            } else if (lastVisit && lastVisit < yesterdayStr) {
+                // Missed a day, reset (or keep 1 for today)
+                newStreak = 1;
+            } else if (!lastVisit) {
+                newStreak = 1;
+            } else {
+                // Future date? Keep current.
+                newStreak = currentStreak;
+            }
+
+            setStreak(newStreak);
+            localStorage.setItem('streak', newStreak.toString());
+            localStorage.setItem('lastVisit', today);
+        } else {
+            setStreak(currentStreak);
+        }
+    }, []);
 
     return (
         <div className="max-w-7xl mx-auto px-6 py-12">
@@ -24,43 +58,59 @@ const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpd
                     <p className="text-brand-text/60 font-sans font-light text-lg">Administrer dine merkevarer og innholdsstrategier.</p>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-1 bg-white p-1 rounded-full border border-gray-200 shadow-sm">
-                        <button
-                            onClick={() => setView('grid')}
-                            className={`px-6 py-2 rounded-full text-sm font-sans uppercase tracking-widest transition-all ${view === 'grid' ? 'bg-brand-text text-white shadow-md' : 'text-brand-text/50 hover:text-brand-text'}`}
-                        >
-                            Oversikt
-                        </button>
-                        <button
-                            onClick={() => setView('calendar')}
-                            className={`px-6 py-2 rounded-full text-sm font-sans uppercase tracking-widest transition-all ${view === 'calendar' ? 'bg-brand-text text-white shadow-md' : 'text-brand-text/50 hover:text-brand-text'}`}
-                        >
-                            Kalender
-                        </button>
-                        <button
-                            onClick={() => setView('analytics')}
-                            className={`px-4 py-2 rounded-full text-brand-text/50 hover:text-brand-text transition-all ${view === 'analytics' ? 'bg-brand-text text-white shadow-md' : ''}`}
-                            title="Analyse"
-                        >
-                            <BarChart2 size={18} />
-                        </button>
+                <div className="flex flex-col items-end gap-4">
+                    {/* Streak Badge */}
+                    <div className="flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-1.5 rounded-full border border-orange-100 shadow-sm animate-fade-in" title="Dager på rad med innlogging!">
+                        <span className="text-lg">🔥</span>
+                        <span className="font-bold font-sans text-sm">{streak} dager streak</span>
                     </div>
 
-                    <button
-                        onClick={onGoToSettings}
-                        className="bg-white hover:bg-gray-50 text-brand-text/60 hover:text-brand-text p-3 rounded-full border border-gray-200 transition-all shadow-sm group"
-                        title="Innstillinger"
-                    >
-                        <Settings size={20} className="group-hover:rotate-45 transition-transform duration-500" />
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-1 bg-white p-1 rounded-full border border-gray-200 shadow-sm">
+                            <button
+                                onClick={() => setView('grid')}
+                                className={`px-6 py-2 rounded-full text-sm font-sans uppercase tracking-widest transition-all ${view === 'grid' ? 'bg-brand-text text-white shadow-md' : 'text-brand-text/50 hover:text-brand-text'}`}
+                            >
+                                Oversikt
+                            </button>
+                            <button
+                                onClick={() => setView('calendar')}
+                                className={`px-6 py-2 rounded-full text-sm font-sans uppercase tracking-widest transition-all ${view === 'calendar' ? 'bg-brand-text text-white shadow-md' : 'text-brand-text/50 hover:text-brand-text'}`}
+                            >
+                                Kalender
+                            </button>
+                            <button
+                                onClick={() => setView('analytics')}
+                                className={`px-4 py-2 rounded-full text-brand-text/50 hover:text-brand-text transition-all ${view === 'analytics' ? 'bg-brand-text text-white shadow-md' : ''}`}
+                                title="Analyse"
+                            >
+                                <BarChart2 size={18} />
+                            </button>
+                        </div>
 
-                    <button
-                        onClick={onAddNew}
-                        className="hidden md:flex bg-brand-gold/10 hover:bg-brand-gold text-brand-gold hover:text-white font-sans text-sm uppercase tracking-wide px-6 py-3 rounded-full transition-all duration-300 items-center gap-2 border border-brand-gold/20"
-                    >
-                        <span>+</span> Ny Merkevare
-                    </button>
+                        <button
+                            onClick={() => setShowMediaKit(true)}
+                            className="bg-white hover:bg-gray-50 text-brand-text/60 hover:text-brand-text p-3 rounded-full border border-gray-200 transition-all shadow-sm group"
+                            title="Media Kit"
+                        >
+                            <FileText size={20} className="group-hover:scale-110 transition-transform" />
+                        </button>
+
+                        <button
+                            onClick={onGoToSettings}
+                            className="bg-white hover:bg-gray-50 text-brand-text/60 hover:text-brand-text p-3 rounded-full border border-gray-200 transition-all shadow-sm group"
+                            title="Innstillinger"
+                        >
+                            <Settings size={20} className="group-hover:rotate-45 transition-transform duration-500" />
+                        </button>
+
+                        <button
+                            onClick={onAddNew}
+                            className="hidden md:flex bg-brand-gold/10 hover:bg-brand-gold text-brand-gold hover:text-white font-sans text-sm uppercase tracking-wide px-6 py-3 rounded-full transition-all duration-300 items-center gap-2 border border-brand-gold/20"
+                        >
+                            <span>+</span> Ny Merkevare
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -114,6 +164,10 @@ const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpd
             ) : (
                 /* Analytics */
                 <AnalyticsView brands={brands} />
+            )}
+
+            {showMediaKit && (
+                <MediaKitModal brands={brands} onClose={() => setShowMediaKit(false)} />
             )}
         </div>
     );

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Brand } from '../../App';
 
 interface OverviewTabProps {
@@ -22,6 +22,46 @@ const OverviewTabContent: React.FC<OverviewTabProps> = ({ brand, updateBrand, on
     const totalPosts = brand.posts.length;
     const approvedCount = brand.posts.filter(p => p.status === 'approved').length;
 
+    // Content Gap Analysis
+    const gapAnalysis = useMemo(() => {
+        const warnings: { type: 'warning' | 'info' | 'success'; message: string }[] = [];
+
+        // Check if no posts
+        if (brand.posts.length === 0) {
+            warnings.push({ type: 'warning', message: '🚀 Ingen poster ennå! Start med å generere ditt første innhold.' });
+        }
+
+        // Check draft posts
+        const draftCount = brand.posts.filter(p => p.status === 'draft').length;
+        if (draftCount > 5) {
+            warnings.push({ type: 'info', message: `📝 Du har ${draftCount} utkast som venter. Vurder å godkjenne noen!` });
+        }
+
+        // Check content variety (using formatType)
+        const formats = brand.posts.map(p => p.formatType).filter(Boolean);
+        const uniqueFormats = new Set(formats);
+        if (brand.posts.length > 5 && uniqueFormats.size < 3) {
+            warnings.push({ type: 'info', message: '🎨 Prøv å variere innholdsformater for mer engasjement.' });
+        }
+
+        // Check for long-form content
+        const hasLongForm = formats.some(f => f === 'long-form');
+        if (brand.posts.length > 10 && !hasLongForm) {
+            warnings.push({ type: 'info', message: '📝 Vurder å lage noe langt innhold for dypere engasjement.' });
+        }
+
+        // Positive feedback
+        if (approvedCount >= 10) {
+            warnings.push({ type: 'success', message: `🏆 Flott! Du har ${approvedCount} godkjente poster klare.` });
+        }
+
+        if (brand.posts.length >= 20) {
+            warnings.push({ type: 'success', message: `📈 Imponerende! ${brand.posts.length} poster totalt i biblioteket.` });
+        }
+
+        return warnings;
+    }, [brand.posts, approvedCount]);
+
     return (
         <div className="space-y-8 animate-fade-in-up">
             <h3 className="text-2xl font-serif italic text-brand-text">Prosjektinfo</h3>
@@ -43,6 +83,28 @@ const OverviewTabContent: React.FC<OverviewTabProps> = ({ brand, updateBrand, on
                     <div className="text-sm font-bold uppercase tracking-widest text-brand-text group-hover:text-brand-gold transition-colors">Generer Neste Måned</div>
                 </div>
             </div>
+
+            {/* Content Gap Analysis */}
+            {gapAnalysis.length > 0 && (
+                <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-100 rounded-2xl p-6">
+                    <h4 className="text-lg font-serif italic text-brand-text mb-4 flex items-center gap-2">
+                        📊 Innholdsanalyse
+                    </h4>
+                    <div className="space-y-3">
+                        {gapAnalysis.map((gap, i) => (
+                            <div
+                                key={i}
+                                className={`p-3 rounded-xl text-sm ${gap.type === 'warning' ? 'bg-red-50 text-red-700 border border-red-100' :
+                                    gap.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' :
+                                        'bg-white text-gray-700 border border-amber-100'
+                                    }`}
+                            >
+                                {gap.message}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

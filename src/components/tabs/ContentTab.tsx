@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import type { Brand, Tweet } from '../../App';
 import { callAI } from '../../services/ai';
 import TweetPreview from '../TweetPreview';
+import HookLabModal from '../HookLabModal';
+import VoiceRecorderModal from '../VoiceRecorderModal';
+import RepurposeModal from '../RepurposeModal';
 
 interface ContentTabProps {
     brand: Brand;
@@ -15,6 +18,9 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
     const [vibeSelectIndex, setVibeSelectIndex] = useState<number | null>(null);
     const [metricsDraft, setMetricsDraft] = useState<{ likes: string; replies: string; impressions: string; }[]>([]);
     const [showMetrics, setShowMetrics] = useState(false);
+    const [showHookLab, setShowHookLab] = useState(false);
+    const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+    const [showRepurpose, setShowRepurpose] = useState(false);
 
     // Helper to update a specific tweet in the brand
     const updateTweet = (index: number, changes: Partial<Tweet>) => {
@@ -192,7 +198,75 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
 
     return (
         <div>
-            <h3 className="text-2xl font-serif italic text-brand-text mb-6">AI-genererte poster</h3>
+            <div className="flex items-center justify-between mb-6">
+                <h3 className="text-2xl font-serif italic text-brand-text">AI-genererte poster</h3>
+                <div className="flex items-center gap-2">
+                    <button
+                        onClick={() => setShowRepurpose(true)}
+                        className="flex items-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 px-4 py-2 rounded-full text-sm font-bold transition-all"
+                    >
+                        ♻️ Repurpose
+                    </button>
+                    <button
+                        onClick={() => setShowVoiceRecorder(true)}
+                        className="flex items-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 px-4 py-2 rounded-full text-sm font-bold transition-all"
+                    >
+                        🎤 Rant Mode
+                    </button>
+                    <button
+                        onClick={() => setShowHookLab(true)}
+                        className="flex items-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-700 px-4 py-2 rounded-full text-sm font-bold transition-all"
+                    >
+                        🧪 Hook Lab
+                    </button>
+                </div>
+            </div>
+
+            {showHookLab && (
+                <HookLabModal
+                    onClose={() => setShowHookLab(false)}
+                    onSelectHook={(hook) => {
+                        // Create a new post with this hook
+                        const newPost = {
+                            text: hook + "\n\n[Skriv resten av innlegget her...]",
+                            hook: hook,
+                            formatType: 'other' as const,
+                            status: 'draft' as const
+                        };
+                        updateBrand({ ...brand, posts: [newPost, ...brand.posts] });
+                    }}
+                />
+            )}
+
+            {showVoiceRecorder && (
+                <VoiceRecorderModal
+                    onClose={() => setShowVoiceRecorder(false)}
+                    onCreatePosts={(posts) => {
+                        const newPosts: Tweet[] = posts.map(p => ({
+                            text: p.text,
+                            hook: p.hook,
+                            formatType: 'other' as const,
+                            status: 'draft' as const
+                        }));
+                        updateBrand({ ...brand, posts: [...newPosts, ...brand.posts] });
+                    }}
+                />
+            )}
+
+            {showRepurpose && (
+                <RepurposeModal
+                    onClose={() => setShowRepurpose(false)}
+                    onCreatePosts={(posts) => {
+                        const newPosts: Tweet[] = posts.map(p => ({
+                            text: p.text,
+                            hook: p.hook,
+                            formatType: 'other' as const,
+                            status: 'draft' as const
+                        }));
+                        updateBrand({ ...brand, posts: [...newPosts, ...brand.posts] });
+                    }}
+                />
+            )}
             {brand.posts.length === 0 ? (
                 <p className="text-gray-400 font-sans">Ingen poster generert.</p>
             ) : (
