@@ -162,7 +162,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, hasBrands, onGoToDas
 
                     <ScrollReveal className="delay-200">
                         <p className="text-lg md:text-xl text-white/90 font-light max-w-2xl mx-auto leading-relaxed drop-shadow-md">
-                            Din personlige AI-produsent. Vi kombinerer strategi, kreativitet og teknologi for å gi merkevaren din en unik stemme.
+                            16+ AI-verktøy for influencere. Fra hashtags til sponsorpitch — alt du trenger på ett sted.
                         </p>
                     </ScrollReveal>
 
@@ -243,10 +243,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, hasBrands, onGoToDas
                     <ScrollReveal>
                         <div className="text-center max-w-3xl mx-auto space-y-6">
                             <h2 className="text-4xl md:text-5xl font-serif italic text-brand-text">
-                                Fra kaos til <span className="text-brand-gold">kontroll</span>
+                                Alt i <span className="text-brand-gold">én app</span>
                             </h2>
                             <p className="text-brand-text/70 font-light text-lg leading-relaxed">
-                                Slutt å gjette hva du skal poste. Vår AI analyserer din merkevare, forstår din målgruppe, og skreddersyr innhold som treffer.
+                                Lag poster, generer hashtags, skriv sponsormail, analyser konkurrenter — uten å bytte verktøy.
                             </p>
                         </div>
                     </ScrollReveal>
@@ -271,23 +271,23 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, hasBrands, onGoToDas
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left">
                         <ScrollReveal className="delay-0">
                             <div className="space-y-3 p-6 bg-white rounded-xl shadow-sm border border-gray-50 h-full">
-                                <div className="w-12 h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xl mb-4 mx-auto md:mx-0">1</div>
-                                <h3 className="font-serif italic text-xl text-brand-text">Automatisk Analyse</h3>
-                                <p className="text-sm text-brand-text/60 font-sans">Vi analyserer din nettside og strategi for å finne din unike stemme.</p>
+                                <div className="w-12 h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xl mb-4 mx-auto md:mx-0">✍️</div>
+                                <h3 className="font-serif italic text-xl text-brand-text">Innhold</h3>
+                                <p className="text-sm text-brand-text/60 font-sans">Poster, hooks, repurposing, voice-to-text. Alt du trenger for å produsere.</p>
                             </div>
                         </ScrollReveal>
                         <ScrollReveal className="delay-200">
                             <div className="space-y-3 p-6 bg-white rounded-xl shadow-sm border border-gray-50 h-full">
-                                <div className="w-12 h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xl mb-4 mx-auto md:mx-0">2</div>
-                                <h3 className="font-serif italic text-xl text-brand-text">Skreddersydd Innhold</h3>
-                                <p className="text-sm text-brand-text/60 font-sans">Få ferdige innholdspakker som passer perfekt til din målgruppe.</p>
+                                <div className="w-12 h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xl mb-4 mx-auto md:mx-0">🛠️</div>
+                                <h3 className="font-serif italic text-xl text-brand-text">Verktøy</h3>
+                                <p className="text-sm text-brand-text/60 font-sans">Hashtags, bio, kommentarsvar, konkurrent­analyse. Spar timer hver uke.</p>
                             </div>
                         </ScrollReveal>
                         <ScrollReveal className="delay-400">
                             <div className="space-y-3 p-6 bg-white rounded-xl shadow-sm border border-gray-50 h-full">
-                                <div className="w-12 h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xl mb-4 mx-auto md:mx-0">3</div>
-                                <h3 className="font-serif italic text-xl text-brand-text">Full Kontroll</h3>
-                                <p className="text-sm text-brand-text/60 font-sans">Godkjenn, rediger eller regenerer innhold med kun taster.</p>
+                                <div className="w-12 h-12 rounded-full bg-brand-gold/10 flex items-center justify-center text-brand-gold text-xl mb-4 mx-auto md:mx-0">📈</div>
+                                <h3 className="font-serif italic text-xl text-brand-text">Strategi</h3>
+                                <p className="text-sm text-brand-text/60 font-sans">Trender, gap-analyse, sponsorpitch. Voks smartere, ikke hardere.</p>
                             </div>
                         </ScrollReveal>
                     </div>
@@ -328,9 +328,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, hasBrands, onGoToDas
                     <ScrollReveal>
                         <span className="text-6xl text-brand-gold/30 font-serif block mb-8">"</span>
                         <h3 className="text-3xl md:text-4xl font-serif italic leading-relaxed mb-8">
-                            Vi tror at teknologiens fremste oppgave er å frigjøre menneskelig kreativitet, ikke erstatte den.
+                            Mindre tid på verktøy. Mer tid på kreativitet.
                         </h3>
-                        <p className="text-white/50 text-sm uppercase tracking-widest font-sans">Produsenten Visjon</p>
+                        <p className="text-white/50 text-sm uppercase tracking-widest font-sans">Produsenten</p>
                     </ScrollReveal>
                 </div>
             </section>

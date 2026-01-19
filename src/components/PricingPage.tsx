@@ -28,13 +28,13 @@ const PricingPage = ({ onBack, onStart }: { onBack: () => void, onStart: () => v
                             <div className="mb-8">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-brand-text/50 mb-2">Start</h3>
                                 <div className="text-4xl font-serif">Gratis</div>
-                                <p className="text-sm text-gray-400 mt-2">Test magien uten risiko.</p>
+                                <p className="text-sm text-gray-400 mt-2">Test alle verktøy gratis.</p>
                             </div>
                             <ul className="space-y-4 mb-8 flex-1">
                                 <li className="flex gap-3 text-sm"><span className="text-green-500">✓</span> 1 Merkevare-analyse</li>
                                 <li className="flex gap-3 text-sm"><span className="text-green-500">✓</span> 5 AI-genererte poster</li>
-                                <li className="flex gap-3 text-sm"><span className="text-green-500">✓</span> Strategi-rapport (PDF)</li>
-                                <li className="flex gap-3 text-sm opacity-50"><span className="text-gray-300">×</span> Ingen bildegenerering</li>
+                                <li className="flex gap-3 text-sm"><span className="text-green-500">✓</span> Hashtag & Bio Generator</li>
+                                <li className="flex gap-3 text-sm"><span className="text-green-500">✓</span> Alle verktøy i Verktøykassen</li>
                             </ul>
                             <button onClick={onStart} className="w-full border border-brand-text text-brand-text py-3 rounded-lg uppercase tracking-widest text-xs font-bold hover:bg-brand-text hover:text-white transition-colors">
                                 Prøv Nå
@@ -49,14 +49,14 @@ const PricingPage = ({ onBack, onStart }: { onBack: () => void, onStart: () => v
                             <div className="mb-8">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-brand-gold mb-2">Proff</h3>
                                 <div className="text-4xl font-serif">290,- <span className="text-sm font-sans font-normal opacity-50">/mnd</span></div>
-                                <p className="text-sm text-white/50 mt-2">For gründere og kreatører.</p>
+                                <p className="text-sm text-white/50 mt-2">For seriøse influencere.</p>
                             </div>
                             <ul className="space-y-4 mb-8 flex-1">
-                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Ubegrenset Brand Analyser</li>
-                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Ubegrenset Post-generering</li>
-                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Bildegenerering (DALL-E)</li>
-                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Kalender og Planlegging</li>
-                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Prioritert Support</li>
+                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Ubegrenset poster & verktøy</li>
+                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Hook Lab & A/B-testing</li>
+                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Sponsor Pitch Generator</li>
+                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Content Recycler</li>
+                                <li className="flex gap-3 text-sm"><span className="text-brand-gold">✓</span> Competitor Spy</li>
                             </ul>
                             <button onClick={onStart} className="w-full bg-brand-gold text-brand-text py-3 rounded-lg uppercase tracking-widest text-xs font-bold hover:bg-white transition-colors">
                                 Start Proff
@@ -100,7 +100,7 @@ const PricingPage = ({ onBack, onStart }: { onBack: () => void, onStart: () => v
                             </div>
                             <div className="border-b border-gray-100 pb-6">
                                 <h4 className="font-bold text-sm mb-2">Hvilke plattformer støttes?</h4>
-                                <p className="text-sm text-brand-text/60">Vi fokuserer på Twitter/X og LinkedIn, men teksten kan enkelt tilpasses Instagram og Facebook.</p>
+                                <p className="text-sm text-brand-text/60">Vi lager innhold for alle plattformer: X, Instagram, LinkedIn, TikTok. Repurpose-verktøyet tilpasser automatisk.</p>
                             </div>
                         </div>
                     </ScrollReveal>

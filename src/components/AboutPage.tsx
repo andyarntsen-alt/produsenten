@@ -20,11 +20,11 @@ const AboutPage = ({ onBack, onStart }: { onBack: () => void, onStart: () => voi
                 </div>
                 <div className="relative z-10 text-center space-y-6 max-w-3xl px-6">
                     <ScrollReveal>
-                        <h1 className="text-5xl md:text-7xl font-serif italic">Vi bygger ikke <br />verktøy for roboter.</h1>
+                        <h1 className="text-5xl md:text-7xl font-serif italic">Laget for <br />de som skaper.</h1>
                     </ScrollReveal>
                     <ScrollReveal className="delay-200">
                         <p className="text-xl font-light text-brand-text/80">
-                            Vi bygger superkrefter for mennesker som har noe å fortelle.
+                            16+ AI-verktøy. Ett mål: Gjøre hverdagen din enklere.
                         </p>
                     </ScrollReveal>
                 </div>
@@ -37,18 +37,15 @@ const AboutPage = ({ onBack, onStart }: { onBack: () => void, onStart: () => voi
                 <ScrollReveal>
                     <div className="grid md:grid-cols-2 gap-12 items-center">
                         <div className="space-y-6">
-                            <h2 className="text-xs font-bold uppercase tracking-widest text-brand-gold">Vår Misjon</h2>
-                            <h3 className="text-3xl font-serif italic">Kreativitet uten utbrenthet.</h3>
+                            <h2 className="text-xs font-bold uppercase tracking-widest text-brand-gold">Hvorfor</h2>
+                            <h3 className="text-3xl font-serif italic">Fokuser på innholdet, ikke verktøyene.</h3>
                             <p className="font-light leading-relaxed text-brand-text/70">
-                                Sosiale medier er en umettelig maskin. Den krever at du poster hver dag, engasjerer deg konstant, og aldri tar pause. For små bedrifter og kreatører betyr dette ofte at gleden ved å skape forsvinner i stresset med å "holde tritt".
-                            </p>
-                            <p className="font-light leading-relaxed text-brand-text/70">
-                                Produsenten ble født ut av denne frustrasjonen. Vi ønsket å bruke AI ikke til å spy ut generisk støy, men til å gi deg roen tilbake. Ved å automatisere strategien og strukturen, kan du bruke energien din på det som faktisk betyr noe: Budskapet.
+                                Du trenger ikke 10 ulike apper for å være en god innholdsskaper. Produsenten samler alt på ett sted — fra idegenerering til sponsorpitch.
                             </p>
                         </div>
                         <div className="bg-white p-8 rounded-2xl shadow-sm border border-brand-gold/10 rotate-3">
                             <blockquote className="font-serif italic text-xl text-center leading-relaxed">
-                                "Teknologi skal ikke erstatte kunstneren, men fjerne støyen så kunsten kan skinne."
+                                "Enkelt. Raskt. Effektivt."
                             </blockquote>
                         </div>
                     </div>
