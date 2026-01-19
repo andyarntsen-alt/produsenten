@@ -94,6 +94,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, hasBrands, onGoToDas
 
                 {/* Desktop Menu */}
                 <div className="hidden md:flex space-x-8 text-sm font-light tracking-widest text-white/90 items-center">
+                    <button
+                        onClick={onGoToDashboard}
+                        className="bg-brand-gold/20 hover:bg-brand-gold text-white hover:text-brand-text px-4 py-2 rounded-full transition-all uppercase text-xs font-bold tracking-wider"
+                    >
+                        Test
+                    </button>
                     {hasBrands && (
                         <button
                             onClick={onGoToDashboard}
@@ -118,6 +124,12 @@ const LandingPage: React.FC<LandingPageProps> = ({ onStart, hasBrands, onGoToDas
                 {/* Mobile Menu Overlay */}
                 {isMobileMenuOpen && (
                     <div className="fixed inset-0 bg-brand-bg/95 backdrop-blur-xl z-40 flex flex-col justify-center items-center space-y-8 animate-fade-in">
+                        <button
+                            onClick={() => { setIsMobileMenuOpen(false); onGoToDashboard?.(); }}
+                            className="bg-brand-gold text-brand-text px-6 py-3 rounded-full uppercase tracking-widest text-sm font-bold"
+                        >
+                            Test
+                        </button>
                         {hasBrands && (
                             <button
                                 onClick={() => { setIsMobileMenuOpen(false); onGoToDashboard?.(); }}

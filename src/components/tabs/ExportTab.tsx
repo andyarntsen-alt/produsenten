@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import type { Brand } from '../../App';
+import { useToast } from '../ToastContext';
 
 interface ExportTabProps {
     brand: Brand;
 }
 
 const ExportTab: React.FC<ExportTabProps> = ({ brand }) => {
+    const { showToast } = useToast();
     const [email, setEmail] = useState('');
     const hasResendKey = !!import.meta.env.VITE_RESEND_API_KEY;
 
@@ -40,13 +42,13 @@ const ExportTab: React.FC<ExportTabProps> = ({ brand }) => {
 
     const copyAll = () => {
         navigator.clipboard.writeText(batchText)
-            .then(() => alert('Alle tweets kopiert til utklippstavlen!'))
+            .then(() => showToast('Alle tweets kopiert til utklippstavlen!', 'success'))
             .catch(err => console.error('Clipboard copy failed', err));
     };
 
     const sendEmail = async () => {
         if (!email) {
-            alert('Angi en e-postadresse.');
+            showToast('Angi en e-postadresse.', 'warning');
             return;
         }
         try {
@@ -68,11 +70,11 @@ const ExportTab: React.FC<ExportTabProps> = ({ brand }) => {
                 const errData = await res.json();
                 throw new Error(errData.message || 'Email sending failed');
             }
-            alert('E-post sendt til ' + email);
+            showToast('E-post sendt til ' + email, 'success');
             setEmail('');
         } catch (err) {
             console.error('Email send failed:', err);
-            alert('Kunne ikke sende e-post. Sjekk VITE_RESEND_API_KEY og e-postadresse.');
+            showToast('Kunne ikke sende e-post. Sjekk e-postadresse.', 'error');
         }
     };
 

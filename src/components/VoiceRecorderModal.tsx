@@ -1,32 +1,70 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Mic, MicOff, Sparkles } from 'lucide-react';
 import { callAI } from '../services/ai';
+import { useToast } from './ToastContext';
 
 interface VoiceRecorderModalProps {
     onClose: () => void;
     onCreatePosts: (posts: { text: string; hook: string }[]) => void;
 }
 
-// Define SpeechRecognition type for TypeScript
-interface SpeechRecognitionEvent {
-    results: SpeechRecognitionResultList;
-    resultIndex: number;
+// Web Speech API type definitions (not included in standard TS lib)
+interface SpeechRecognitionResult {
+    readonly isFinal: boolean;
+    readonly length: number;
+    item(index: number): SpeechRecognitionAlternative;
+    [index: number]: SpeechRecognitionAlternative;
+}
+
+interface SpeechRecognitionAlternative {
+    readonly transcript: string;
+    readonly confidence: number;
+}
+
+interface SpeechRecognitionResultList {
+    readonly length: number;
+    item(index: number): SpeechRecognitionResult;
+    [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognitionEvent extends Event {
+    readonly results: SpeechRecognitionResultList;
+    readonly resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+    readonly error: string;
+}
+
+interface SpeechRecognition extends EventTarget {
+    continuous: boolean;
+    interimResults: boolean;
+    lang: string;
+    onresult: ((event: SpeechRecognitionEvent) => void) | null;
+    onerror: ((event: SpeechRecognitionErrorEvent) => void) | null;
+    start(): void;
+    stop(): void;
+}
+
+interface WindowWithSpeechRecognition {
+    SpeechRecognition?: new () => SpeechRecognition;
+    webkitSpeechRecognition?: new () => SpeechRecognition;
 }
 
 const VoiceRecorderModal: React.FC<VoiceRecorderModalProps> = ({ onClose, onCreatePosts }) => {
+    const { showToast } = useToast();
     const [isRecording, setIsRecording] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
-    const recognitionRef = useRef<unknown>(null);
+    const recognitionRef = useRef<SpeechRecognition | null>(null);
 
     useEffect(() => {
         // Check for browser support
-        const SpeechRecognitionAPI = (window as unknown as { SpeechRecognition?: new () => unknown; webkitSpeechRecognition?: new () => unknown }).SpeechRecognition ||
-            (window as unknown as { webkitSpeechRecognition?: new () => unknown }).webkitSpeechRecognition;
+        const windowWithSpeech = window as unknown as WindowWithSpeechRecognition;
+        const SpeechRecognitionAPI = windowWithSpeech.SpeechRecognition || windowWithSpeech.webkitSpeechRecognition;
 
         if (SpeechRecognitionAPI) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const recognition = new SpeechRecognitionAPI() as any;
+            const recognition = new SpeechRecognitionAPI();
             recognition.continuous = true;
             recognition.interimResults = true;
             recognition.lang = 'nb-NO'; // Norwegian
@@ -44,7 +82,7 @@ const VoiceRecorderModal: React.FC<VoiceRecorderModalProps> = ({ onClose, onCrea
                 }
             };
 
-            recognition.onerror = (event: { error: string }) => {
+            recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
                 console.error('Speech recognition error:', event.error);
                 setIsRecording(false);
             };
@@ -53,27 +91,22 @@ const VoiceRecorderModal: React.FC<VoiceRecorderModalProps> = ({ onClose, onCrea
         }
 
         return () => {
-            if (recognitionRef.current) {
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                (recognitionRef.current as any).stop?.();
-            }
+            recognitionRef.current?.stop();
         };
     }, []);
 
     const toggleRecording = () => {
         if (!recognitionRef.current) {
-            alert('Talegjenkjenning er ikke støttet i denne nettleseren. Prøv Chrome.');
+            showToast('Talegjenkjenning er ikke støttet i denne nettleseren. Prøv Chrome.', 'warning');
             return;
         }
 
         if (isRecording) {
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (recognitionRef.current as any).stop();
+            recognitionRef.current.stop();
             setIsRecording(false);
         } else {
             setTranscript('');
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            (recognitionRef.current as any).start();
+            recognitionRef.current.start();
             setIsRecording(true);
         }
     };
@@ -116,15 +149,15 @@ Returner som JSON array:
             }
         } catch (err) {
             console.error('Processing failed:', err);
-            alert('Kunne ikke prosessere. Sjekk API-nøkkel.');
+            showToast('Kunne ikke prosessere. Sjekk API-nøkkel.', 'error');
         } finally {
             setIsProcessing(false);
         }
     };
 
     const isSupported = typeof window !== 'undefined' &&
-        ((window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition ||
-            (window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition);
+        ((window as unknown as WindowWithSpeechRecognition).SpeechRecognition ||
+            (window as unknown as WindowWithSpeechRecognition).webkitSpeechRecognition);
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">

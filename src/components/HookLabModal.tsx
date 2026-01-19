@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Zap } from 'lucide-react';
 import { callAI } from '../services/ai';
+import { useToast } from './ToastContext';
 
 interface HookLabModalProps {
     onClose: () => void;
@@ -13,6 +14,7 @@ interface HookResult {
 }
 
 const HookLabModal: React.FC<HookLabModalProps> = ({ onClose, onSelectHook }) => {
+    const { showToast } = useToast();
     const [topic, setTopic] = useState('');
     const [hooks, setHooks] = useState<HookResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
@@ -58,7 +60,7 @@ Vær kreativ, bruk forskjellige teknikker:
             }
         } catch (err) {
             console.error('Hook generation failed:', err);
-            alert('Kunne ikke generere hooks. Sjekk API-nøkkel.');
+            showToast('Kunne ikke generere hooks. Sjekk API-nøkkel.', 'error');
         } finally {
             setIsLoading(false);
         }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, RefreshCw, Linkedin, Twitter } from 'lucide-react';
 import { callAI } from '../services/ai';
+import { useToast } from './ToastContext';
 
 interface RepurposeModalProps {
     onClose: () => void;
@@ -8,6 +9,7 @@ interface RepurposeModalProps {
 }
 
 const RepurposeModal: React.FC<RepurposeModalProps> = ({ onClose, onCreatePosts }) => {
+    const { showToast } = useToast();
     const [sourceText, setSourceText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState<{ platform: string; text: string; icon: React.ReactNode }[]>([]);
@@ -62,7 +64,7 @@ Returner som JSON array:
             }
         } catch (err) {
             console.error('Repurpose failed:', err);
-            alert('Kunne ikke repurpose. Sjekk API-nøkkel.');
+            showToast('Kunne ikke repurpose. Sjekk API-nøkkel.', 'error');
         } finally {
             setIsLoading(false);
         }

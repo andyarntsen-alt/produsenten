@@ -1,5 +1,6 @@
 import React from 'react';
 import { ScrollReveal } from './LandingPage';
+import { useToast } from './ToastContext';
 
 interface ContactPageProps {
     onBack: () => void;
@@ -7,6 +8,7 @@ interface ContactPageProps {
 }
 
 const ContactPage: React.FC<ContactPageProps> = ({ onBack, onStart }) => {
+    const { showToast } = useToast();
     return (
         <div className="min-h-screen bg-brand-bg text-brand-text font-sans selection:bg-brand-gold/30">
             {/* Navigation */}
@@ -39,7 +41,7 @@ const ContactPage: React.FC<ContactPageProps> = ({ onBack, onStart }) => {
                         <ScrollReveal>
                             <div className="bg-white p-8 rounded-3xl shadow-sm border border-gray-100 h-full">
                                 <h3 className="text-2xl font-serif italic mb-6">Send oss en melding</h3>
-                                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); alert("Melding sendt! (Dette er en demo)"); }}>
+                                <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); showToast("Melding sendt! (Dette er en demo)", "success"); }}>
                                     <div>
                                         <label className="block text-xs font-bold uppercase tracking-widest mb-2 opacity-60">Navn</label>
                                         <input type="text" className="w-full p-3 bg-gray-50 rounded-xl border-none focus:ring-2 focus:ring-brand-gold/50 transition-all" placeholder="Ditt navn" required />

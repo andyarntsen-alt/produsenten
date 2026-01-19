@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import heroBg from '../assets/hero-bg.png';
+import { useToast } from './ToastContext';
 
 interface OnboardingProps {
     vibeOptions: string[];
@@ -8,6 +9,7 @@ interface OnboardingProps {
 }
 
 const Onboarding: React.FC<OnboardingProps> = ({ vibeOptions, onSubmit, onCancel }) => {
+    const { showToast } = useToast();
     const [step, setStep] = useState(0); // 0: Guide, 1: Form
     const [name, setName] = useState('');
     const [url, setUrl] = useState('');
@@ -21,7 +23,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ vibeOptions, onSubmit, onCancel
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!name.trim() || !url.trim() || !vibe) {
-            alert('Vennligst fyll ut navn, URL og tone.');
+            showToast('Vennligst fyll ut navn, URL og tone.', 'warning');
             return;
         }
         onSubmit(

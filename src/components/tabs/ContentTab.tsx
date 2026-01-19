@@ -5,6 +5,7 @@ import TweetPreview from '../TweetPreview';
 import HookLabModal from '../HookLabModal';
 import VoiceRecorderModal from '../VoiceRecorderModal';
 import RepurposeModal from '../RepurposeModal';
+import { useToast } from '../ToastContext';
 
 interface ContentTabProps {
     brand: Brand;
@@ -13,6 +14,7 @@ interface ContentTabProps {
 }
 
 const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand }) => {
+    const { showToast } = useToast();
     const [editIndex, setEditIndex] = useState<number | null>(null);
     const [editText, setEditText] = useState('');
     const [vibeSelectIndex, setVibeSelectIndex] = useState<number | null>(null);
@@ -37,7 +39,7 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
         if (editIndex === null) return;
         const newText = editText.trim();
         if (!newText) {
-            alert('Teksten kan ikke være tom.');
+            showToast('Teksten kan ikke være tom.', 'warning');
             return;
         }
         const newStatus: Tweet['status'] = 'edited';
@@ -70,7 +72,7 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
 
         } catch (err) {
             console.error('Regeneration failed:', err);
-            alert('Kunne ikke regenerere tweet. Sjekk API-nøkkel.');
+            showToast('Kunne ikke regenerere tweet. Sjekk API-nøkkel.', 'error');
             updateTweet(index, { text: originalText, status: originalStatus });
         }
     };
@@ -101,7 +103,7 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
             updateTweet(index, { text: result, status: 'edited' });
             setVibeSelectIndex(null);
         } catch {
-            alert('Kunne ikke endre tone.');
+            showToast('Kunne ikke endre tone.', 'error');
         }
     };
 
@@ -126,7 +128,7 @@ const ContentTab: React.FC<ContentTabProps> = ({ brand, vibePresets, updateBrand
             updateTweet(index, { linkedInPost: result });
         } catch (err) {
             console.error('LinkedIn generation failed:', err);
-            alert('Kunne ikke generere LinkedIn-versjon.');
+            showToast('Kunne ikke generere LinkedIn-versjon.', 'error');
         }
     };
 

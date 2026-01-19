@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Lock, Mail } from 'lucide-react';
+import { useToast } from './ToastContext';
 
 interface LoginPageProps {
     onLogin: () => void;
@@ -7,6 +8,7 @@ interface LoginPageProps {
 }
 
 const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
+    const { showToast } = useToast();
     const [isLoading, setIsLoading] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -62,7 +64,7 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLogin, onBack }) => {
                         <div className="space-y-2">
                             <div className="flex justify-between items-center ml-1">
                                 <label className="text-xs uppercase tracking-widest text-brand-text/60 font-bold">Passord</label>
-                                <button type="button" className="text-xs text-brand-gold hover:text-brand-text transition-colors" onClick={() => alert('Funksjonen kommer snart.')}>Glemt passord?</button>
+                                <button type="button" className="text-xs text-brand-gold hover:text-brand-text transition-colors" onClick={() => showToast('Funksjonen kommer snart.', 'info')}>Glemt passord?</button>
                             </div>
                             <div className="relative">
                                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />

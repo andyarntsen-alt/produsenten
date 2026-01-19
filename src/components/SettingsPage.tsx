@@ -1,14 +1,23 @@
 import React from 'react';
 import { ArrowLeft, Trash2, Download, Database } from 'lucide-react';
+import { useToast } from './ToastContext';
 
 interface SettingsPageProps {
     onBack: () => void;
 }
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
+    const { showToast, showConfirm } = useToast();
 
-    const handleDeleteAllData = () => {
-        if (confirm('Er du sikker? Dette vil slette ALLE dine merkevarer og lagret data. Dette kan ikke angres.')) {
+    const handleDeleteAllData = async () => {
+        const confirmed = await showConfirm({
+            title: 'Slett all data',
+            message: 'Er du sikker? Dette vil slette ALLE dine merkevarer og lagret data. Dette kan ikke angres.',
+            confirmText: 'Slett alt',
+            cancelText: 'Avbryt',
+            type: 'danger'
+        });
+        if (confirmed) {
             localStorage.clear();
             window.location.reload();
         }
@@ -17,7 +26,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
     const handleExportData = () => {
         const data = localStorage.getItem('brands');
         if (!data) {
-            alert('Ingen data å eksportere.');
+            showToast('Ingen data å eksportere.', 'warning');
             return;
         }
         const blob = new Blob([data], { type: 'application/json' });

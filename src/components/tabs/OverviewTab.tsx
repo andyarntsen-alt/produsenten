@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { Brand } from '../../App';
+import { useToast } from '../ToastContext';
 
 interface OverviewTabProps {
     brand: Brand;
@@ -8,7 +9,8 @@ interface OverviewTabProps {
 }
 
 const OverviewTabContent: React.FC<OverviewTabProps> = ({ brand, updateBrand, onGenerateNext }) => {
-    // Initialized from props. Component is re-mounted when brand.id changes (via key in wrapper), 
+    const { showToast } = useToast();
+    // Initialized from props. Component is re-mounted when brand.id changes (via key in wrapper),
     // so we don't need useEffect to sync state.
     const [editTarget, setEditTarget] = useState(brand.targetAudience || '');
     const [editGoals, setEditGoals] = useState(brand.goals || '');
@@ -16,7 +18,7 @@ const OverviewTabContent: React.FC<OverviewTabProps> = ({ brand, updateBrand, on
     const saveInfo = () => {
         const updated: Brand = { ...brand, targetAudience: editTarget, goals: editGoals };
         updateBrand(updated);
-        alert('Prosjektinfo oppdatert');
+        showToast('Prosjektinfo oppdatert', 'success');
     };
 
     const totalPosts = brand.posts.length;

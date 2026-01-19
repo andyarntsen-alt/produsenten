@@ -11,6 +11,7 @@ import SettingsPage from './components/SettingsPage';
 import LoginPage from './components/LoginPage';
 import ToolsHub from './components/ToolsHub';
 import { callAI } from './services/ai';
+import { useToast } from './components/ToastContext';
 
 // Vibe presets with descriptions (Norwegian)
 const vibePresets = [
@@ -109,7 +110,7 @@ async function fetchWebsite(url: string): Promise<string> {
   }
 }
 
-// OpenAI API call helper (Chat completion)
+// Chat message type and system message for AI prompts
 interface ChatMessage { role: 'system' | 'user' | 'assistant'; content: string; }
 const systemMessage: ChatMessage = {
   role: 'system',
@@ -117,36 +118,15 @@ const systemMessage: ChatMessage = {
     'Ikke avslør at du er en AI, og imiter tonen til en kreativ tekstforfatter.'
 };
 
-/*
-async function callOpenAI(messages: ChatMessage[]): Promise<string> {
-  const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
-  if (!apiKey) throw new Error('VITE_OPENAI_API_KEY mangler i .env');
-  const model = import.meta.env.VITE_OPENAI_MODEL || 'gpt-4';
-  // Always prepend system message for context
-  const fullMessages = [systemMessage, ...messages];
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: model,
-      messages: fullMessages,
-      temperature: 0.7
-    })
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.error?.message || 'Feil fra OpenAI API');
-  }
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) throw new Error('Ingen svar mottatt fra AI');
-  return content.trim();
+
+
+// Type for API response tweets
+interface AITweetResponse {
+  text: string;
+  hook?: string;
+  formatType?: string;
+  mediaIdea?: string;
 }
-*/
-
-
 
 // Parse AI output of multiple tweets into an array of tweet texts
 function parseTweets(text: string): string[] {
@@ -172,6 +152,7 @@ function parseTweets(text: string): string[] {
 }
 
 function App() {
+  const { showToast, showConfirm } = useToast();
   const [brands, setBrands] = useState<Brand[]>(() => {
     const saved = localStorage.getItem('brands');
     return saved ? JSON.parse(saved) : [];
@@ -333,14 +314,13 @@ function App() {
       let newTweets: Tweet[] = [];
       try {
         const match = contentJsonStr.match(/\{[\s\S]*\}/);
-        const contentData = JSON.parse(match ? match[0] : contentJsonStr);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        newTweets = contentData.tweets.map((t: any) => ({
+        const contentData = JSON.parse(match ? match[0] : contentJsonStr) as { tweets: AITweetResponse[] };
+        newTweets = contentData.tweets.map((t: AITweetResponse) => ({
           text: t.text,
           hook: t.hook || t.text.split('\n')[0],
-          formatType: t.formatType || 'other',
+          formatType: (t.formatType as Tweet['formatType']) || 'other',
           mediaIdea: t.mediaIdea,
-          status: 'draft'
+          status: 'draft' as const
         }));
       } catch (e) {
         console.error("JSON parse error (content):", e);
@@ -402,7 +382,7 @@ function App() {
 
     } catch (err) {
       console.error('Error in creation pipeline:', err);
-      alert('Noe gikk galt. Sjekk konsollen for detaljer. ' + err);
+      showToast('Noe gikk galt under opprettelsen. Prøv igjen.', 'error');
       setMode('onboarding');
     } finally {
       setGenMessage('');
@@ -414,7 +394,14 @@ function App() {
     if (brandIndex === -1) return;
     const brand = brands[brandIndex];
 
-    if (!confirm('Generer neste måneds innhold basert på innsikt?')) return;
+    const confirmed = await showConfirm({
+      title: 'Generer nytt innhold',
+      message: 'Vil du generere neste måneds innhold basert på innsikt fra forrige periode?',
+      confirmText: 'Generer',
+      cancelText: 'Avbryt',
+      type: 'info'
+    });
+    if (!confirmed) return;
 
     setGenMessage('Analyserer forrige måneds resultater...');
 
@@ -455,14 +442,13 @@ function App() {
       let nextTweets: Tweet[] = [];
       try {
         const match = contentJsonStr.match(/\{[\s\S]*\}/);
-        const contentData = JSON.parse(match ? match[0] : contentJsonStr);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        nextTweets = contentData.tweets.map((t: any) => ({
+        const contentData = JSON.parse(match ? match[0] : contentJsonStr) as { tweets: AITweetResponse[] };
+        nextTweets = contentData.tweets.map((t: AITweetResponse) => ({
           text: t.text,
           hook: t.hook || t.text.split('\n')[0],
-          formatType: t.formatType || 'other',
+          formatType: (t.formatType as Tweet['formatType']) || 'other',
           mediaIdea: t.mediaIdea,
-          status: 'draft'
+          status: 'draft' as const
         }));
       } catch (e) {
         console.warn("Fallback parse next batch", e);
@@ -495,11 +481,11 @@ function App() {
       };
 
       updateBrand(updatedBrand);
-      alert('Nytt innhold generert og lagt til kalenderen!');
+      showToast('Nytt innhold generert og lagt til kalenderen!', 'success');
 
     } catch (err) {
       console.error("Next batch error", err);
-      alert("Feil ved generering av neste måned.");
+      showToast('Feil ved generering av neste måned.', 'error');
     } finally {
       setGenMessage('');
     }

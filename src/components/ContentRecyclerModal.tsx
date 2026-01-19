@@ -11,6 +11,11 @@ interface ContentRecyclerModalProps {
 const ContentRecyclerModal: React.FC<ContentRecyclerModalProps> = ({ brand, onClose, onRecycle }) => {
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
+    // Generate stable random scores for posts without metrics (seeded by post index)
+    const [randomScores] = useState(() =>
+        brand.posts.map((_, index) => Math.floor(50 + ((index * 17 + 13) % 50)))
+    );
+
     // Find posts that could be recycled (approved posts, simulating "old high performers")
     const recyclablePosts = useMemo(() => {
         return brand.posts
@@ -18,14 +23,14 @@ const ContentRecyclerModal: React.FC<ContentRecyclerModalProps> = ({ brand, onCl
             .map((post, index) => ({
                 ...post,
                 originalIndex: index,
-                // Simulate performance score based on metrics or random
+                // Simulate performance score based on metrics or use stable random score
                 performanceScore: post.metrics?.likes
                     ? Math.round((post.metrics.likes / (post.metrics.impressions || 1000)) * 100)
-                    : Math.floor(50 + Math.random() * 50)
+                    : randomScores[index] || 50
             }))
             .sort((a, b) => b.performanceScore - a.performanceScore)
             .slice(0, 10);
-    }, [brand.posts]);
+    }, [brand.posts, randomScores]);
 
     const handleRecycle = () => {
         if (selectedIndex === null) return;
