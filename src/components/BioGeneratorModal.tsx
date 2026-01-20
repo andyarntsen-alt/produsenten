@@ -1,17 +1,37 @@
 import React, { useState } from 'react';
 import { X, User, Copy, Check, Sparkles } from 'lucide-react';
-import { callAI } from '../services/ai';
+import { callAIHumanized } from '../services/humanizer';
+import { useSettings } from '../context/SettingsContext';
+import { buildLanguagePromptSection, getPromptTranslations } from '../services/languagePrompts';
+import type { Brand } from '../App';
 
 interface BioGeneratorModalProps {
+    brand?: Brand;
     onClose: () => void;
 }
 
-const BioGeneratorModal: React.FC<BioGeneratorModalProps> = ({ onClose }) => {
+const BioGeneratorModal: React.FC<BioGeneratorModalProps> = ({ brand, onClose }) => {
+    const { settings } = useSettings();
     const [keywords, setKeywords] = useState('');
     const [platform, setPlatform] = useState('instagram');
     const [bios, setBios] = useState<string[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+    const languageSection = buildLanguagePromptSection(settings.language);
+    const t = getPromptTranslations(settings.language);
+    const isEnglish = settings.language === 'en';
+
+    // Build brand context if brand is provided
+    const brandContext = brand ? `
+${t.content.brandContext}:
+- ${t.brand}: ${brand.name}
+- ${t.tone}: ${brand.vibe}
+${brand.targetAudience ? `- ${t.targetAudience}: ${brand.targetAudience}` : ''}
+${brand.industry ? `- ${t.industry}: ${brand.industry}` : ''}
+${brand.brandBrief?.valueProps?.length ? `- ${t.content.valueProps}: ${brand.brandBrief.valueProps.slice(0, 2).join(', ')}` : ''}
+${brand.brandBrief?.brandPersonality ? `- ${t.content.personality}: ${brand.brandBrief.brandPersonality}` : ''}
+` : '';
 
     const generateBios = async () => {
         if (!keywords.trim()) return;
@@ -19,55 +39,89 @@ const BioGeneratorModal: React.FC<BioGeneratorModalProps> = ({ onClose }) => {
         setBios([]);
 
         try {
-            const platformLimits: Record<string, string> = {
+            const platformLimits: Record<string, string> = isEnglish ? {
+                instagram: '150 chars',
+                twitter: '160 chars',
+                linkedin: '300 chars',
+                tiktok: '80 chars'
+            } : {
                 instagram: '150 tegn',
                 twitter: '160 tegn',
                 linkedin: '300 tegn',
                 tiktok: '80 tegn'
             };
 
-            const prompt = `Du er en ekspert på personlig merkevarebygging. Lag 5 PROFESJONELLE og ENGASJERENDE bio-forslag for ${platform}.
+            const prompt = `${languageSection}
+${brandContext}
 
-Stikkord om personen/brandet:
-"${keywords}"
+${t.bioGenerator.createBios} ${platform}.
 
-Målet er å konvertere besøkende til følgere/kunder.
+${t.bioGenerator.keywords}: "${keywords}"
 
-Struktur-tips (bruk variasjon):
-1. The Authority: [Tittel] | Hjelper X med Y | CTA
-2. The Listicle: 
-   📍 Sted
-   🚀 Hva jeg gjør
-   👉 CTA
-3. The Personal: [Lidenskap] + [Jobb] + [Fun fact]
-4. The Minimalist: Konsis verdiforslag. URL.
+${t.bioGenerator.requirements}:
+- ${t.bioGenerator.maxChars.replace('{limit}', platformLimits[platform])}
+- ${t.bioGenerator.useLineBreaks}
+- Max 2-3 emojis per bio
 
-Regler:
-- Maks ${platformLimits[platform]} (Viktig!)
-- Bruk linjeskift der det passer (spesielt for Instagram/TikTok) (Bruk \\n for linjeskift)
-- Bruk relevante emojis som kulepunkter
-- Vær unik, unngå klisjeer
-- Norsk språk
+${isEnglish ? `FORBIDDEN CLICHÉS (NEVER USE):` : `FORBUDTE KLISJEER (ALDRI BRUK):`}
+- "Passionate about..."
+- "On a mission to..."
+- "Living my best life"
+- "Dreamer | Creator | Thinker"
+- "Making the world a better place"
+- "Coffee addict ☕"
 
-Returner som JSON array av strenger:
-["Bio 1 tekst...", "Bio 2 tekst..."]`;
+${isEnglish ? `GOOD EXAMPLES:` : `GODE EKSEMPLER:`}
+${isEnglish ? `
+- "Writing about money. Without being annoying.\\n📍NYC"
+- "Helping businesses with [X]\\nFormer: [Y]\\n👇 Free guide"
+- "Making [complex thing] simple.\\nDMs open."
+` : `
+- "Skriver om penger. Uten å være irriterende.\\n📍Oslo"
+- "Hjelper bedrifter med [X]\\nTidligere: [Y]\\n👇 Gratis guide"
+- "Gjør [komplisert ting] enkelt.\\nDMs åpne."
+`}
 
-            const result = await callAI([
-                { role: 'system', content: 'Du er en ekspert på sosiale medier bios. Svar kun med JSON array.' },
+${isEnglish ? `STRUCTURE VARIATION:` : `STRUKTUR-VARIASJON:`}
+${isEnglish ? `
+1. Authority: Title | Helping X with Y | CTA
+2. Listicle: 📍 + 🚀 + 👇 format
+3. Personal: Interest + job + fun fact
+4. Minimalist: Short value prop. Done.
+5. Controversial: Hot take on the niche
+` : `
+1. Authority: Tittel | Hjelper X med Y | CTA
+2. Listicle: 📍 + 🚀 + 👇 format
+3. Personal: Interesse + jobb + fun fact
+4. Minimalist: Kort verdiforslag. Ferdig.
+5. Kontroversiell: Hot take om nisjen
+`}
+
+${t.bioGenerator.returnAsJson}:
+["Bio 1", "Bio 2", "Bio 3", "Bio 4", "Bio 5"]`;
+
+            const result = await callAIHumanized([
+                { role: 'system', content: isEnglish ? 'You create social media bios. Reply only with JSON array.' : 'Du lager sosiale medier bios. Svar kun med JSON array.' },
                 { role: 'user', content: prompt }
-            ]);
+            ], { toolType: 'bio', includeValidation: false });
 
             try {
                 const match = result.match(/\[[\s\S]*\]/);
                 const parsed = JSON.parse(match ? match[0] : result);
                 setBios(parsed);
             } catch {
-                setBios([
-                    "🚀 Skaper innhold som konverterer\n📍 Oslo\n👇 Last ned guiden min",
-                    "Hjelper bedrifter å vokse på nett 📈\n—\nDaglig leder @dittfirma\nSend DM for samarbeid 💌",
-                    "Din go-to for [nisje] 🌱\n✨ Tips & triks hver dag\n🔗 Link i bio",
-                    "Kreativ sjel med sans for [tema] 🎨 | Deler reisen min 🌍 | Bli med backstage 👇",
-                    "Offisiell konto for [navn] ✅\nBuilding the future of [bransje] 🚀"
+                setBios(isEnglish ? [
+                    "Writing about [topic]. No BS.\n📍 NYC",
+                    "Helping [audience] with [problem]\nFormer: [X]\n👇 Free resources",
+                    "Making [complex thing] simple.\nDMs open.",
+                    "[Title] | [Short value prop]\n[URL]",
+                    "Unpopular opinions about [niche].\nSometimes I'm wrong."
+                ] : [
+                    "Skriver om [tema]. Uten bullshit.\n📍 Oslo",
+                    "Hjelper [målgruppe] med [problem]\nTidligere: [X]\n👇 Gratis ressurser",
+                    "Gjør [komplisert ting] enkelt.\nDMs åpne.",
+                    "[Tittel] | [Kort verdiforslag]\n[URL]",
+                    "Upopulære meninger om [nisje].\nNoen ganger tar jeg feil."
                 ]);
             }
         } catch (err) {

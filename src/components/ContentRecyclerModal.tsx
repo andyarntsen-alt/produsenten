@@ -1,8 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { X, Recycle, Sparkles } from 'lucide-react';
 import type { Brand, Tweet } from '../App';
-import { callAI } from '../services/ai';
+import { callAIHumanized } from '../services/humanizer';
 import { getDefaultPersona, buildSystemPrompt } from '../services/personaSystem';
+import { useSettings } from '../context/SettingsContext';
+import { buildLanguagePromptSection } from '../services/languagePrompts';
 
 interface ContentRecyclerModalProps {
     brand: Brand;
@@ -11,8 +13,11 @@ interface ContentRecyclerModalProps {
 }
 
 const ContentRecyclerModal: React.FC<ContentRecyclerModalProps> = ({ brand, onClose, onRecycle }) => {
+    const { settings } = useSettings();
     const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    const languageSection = buildLanguagePromptSection(settings.language);
 
     // Generate stable random scores for posts without metrics (seeded by post index)
     const [randomScores] = useState(() =>
@@ -54,7 +59,9 @@ const ContentRecyclerModal: React.FC<ContentRecyclerModalProps> = ({ brand, onCl
             });
 
             // Specific prompt for recycling with stronger humanizer instructions
-            const userPrompt = `Jeg vil at du skal omskrive denne gamle posten slik at den føles helt ny og frisk.
+            const userPrompt = `${languageSection}
+
+Jeg vil at du skal omskrive denne gamle posten slik at den føles helt ny og frisk.
             
 GAMMEL POST:
 "${post.text}"
@@ -68,10 +75,10 @@ DINE INSTRUKSER:
 
 Returner KUN den nye teksten.`;
 
-            const recycledText = await callAI([
+            const recycledText = await callAIHumanized([
                 { role: 'system', content: systemContent },
                 { role: 'user', content: userPrompt }
-            ]);
+            ], { toolType: 'content', includeValidation: true });
 
             onRecycle({
                 ...post,

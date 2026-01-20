@@ -1,18 +1,38 @@
 import React, { useState } from 'react';
 import { X, Mail, Sparkles, Copy, Check } from 'lucide-react';
-import { callAI } from '../services/ai';
+import { callAIHumanized } from '../services/humanizer';
+import { useSettings } from '../context/SettingsContext';
+import { buildLanguagePromptSection, getPromptTranslations } from '../services/languagePrompts';
+import type { Brand } from '../App';
 
 interface SponsorPitchModalProps {
+    brand?: Brand;
     brandName: string;
     onClose: () => void;
 }
 
-const SponsorPitchModal: React.FC<SponsorPitchModalProps> = ({ brandName, onClose }) => {
+const SponsorPitchModal: React.FC<SponsorPitchModalProps> = ({ brand, brandName, onClose }) => {
+    const { settings } = useSettings();
     const [targetBrand, setTargetBrand] = useState('');
     const [goal, setGoal] = useState('produktplassering');
     const [pitchEmail, setPitchEmail] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [copied, setCopied] = useState(false);
+
+    const languageSection = buildLanguagePromptSection(settings.language);
+    const t = getPromptTranslations(settings.language);
+    const isEnglish = settings.language === 'en';
+
+    // Build brand context for more compelling pitches
+    const brandContext = brand ? `
+${t.content.brandContext}:
+- ${t.brand}: ${brand.name}
+${brand.targetAudience ? `- ${t.targetAudience}: ${brand.targetAudience}` : ''}
+${brand.industry ? `- ${t.industry}: ${brand.industry}` : ''}
+${brand.brandBrief?.valueProps?.length ? `- ${t.content.valueProps}: ${brand.brandBrief.valueProps.slice(0, 2).join(', ')}` : ''}
+${brand.brandBrief?.differentiators?.length ? `- ${t.content.differentiators}: ${brand.brandBrief.differentiators.slice(0, 2).join(', ')}` : ''}
+${brand.brandBrief?.idealCustomer ? `- ${t.content.idealCustomer}: ${brand.brandBrief.idealCustomer}` : ''}
+` : '';
 
     const generatePitch = async () => {
         if (!targetBrand.trim()) return;
@@ -20,44 +40,89 @@ const SponsorPitchModal: React.FC<SponsorPitchModalProps> = ({ brandName, onClos
         setPitchEmail('');
 
         try {
-            const prompt = `Du er en profesjonell influencer-manager. Skriv en overbevisende cold-email til ${targetBrand} på vegne av influenceren/merkevaren "${brandName}".
+            const prompt = `${languageSection}
+${brandContext}
 
-Mål med samarbeidet: ${goal}
+${t.sponsorPitch.writeColdEmail} ${targetBrand} ${t.sponsorPitch.onBehalfOf} "${brandName}".
 
-Regler:
-1. Vær profesjonell men personlig
-2. Vis at du kjenner til ${targetBrand} og deres verdier
-3. Forklar kort hva ${brandName} kan tilby
-4. Inkluder konkrete samarbeidsideer
-5. Ha en tydelig CTA
-6. Hold det kort (under 200 ord)
+${t.sponsorPitch.goal}: ${goal}
 
-Skriv e-posten på norsk. Start direkte med "Hei [Navn],".`;
+${t.sponsorPitch.requirements}:
+- ${t.sponsorPitch.professionalButPersonal}
+- ${t.sponsorPitch.under200Words}
+${isEnglish ? `- Start with "Hi [Name]," (not "Dear" or "To whom it may concern")` : `- Start med "Hei [Navn]," (ikke "Kjære" eller "Til rette vedkommende")`}
+- ${t.sponsorPitch.showYouKnowThem}
+- ${t.sponsorPitch.concreteIdeas}
+- ${t.sponsorPitch.clearCta}
 
-            const result = await callAI([
-                { role: 'system', content: 'Du er en ekspert på influencer-samarbeid og skriving av pitch-e-poster.' },
+${t.sponsorPitch.forbidden}:
+${isEnglish ? `- "I'm reaching out because..." (boring opening)
+- "We are a leading..." (corporate-speak)
+- "We would greatly appreciate..." (too formal)
+- "Best regards" (use "Cheers" or "Talk soon")
+- Long paragraphs` : `- "Jeg skriver til deg fordi..." (kjedelig åpning)
+- "Vi er en ledende..." (corporate-speak)
+- "Vi ville satt stor pris på..." (for formelt)
+- "Med vennlig hilsen" (bruk "Hilsen" eller "Snakkes")
+- Lange avsnitt`}
+
+${isEnglish ? `EXAMPLE OF GOOD STRUCTURE:
+Hi [Name],
+
+[1 sentence showing you know the brand]
+
+[1-2 sentences about what you do]
+
+[Concrete collaboration idea - short and specific]
+
+[CTA - e.g. "Can we do a 15 min call next week?"]
+
+Cheers,
+[Name]` : `EKSEMPEL PÅ GOD STRUKTUR:
+Hei [Navn],
+
+[1 setning som viser du kjenner brandet]
+
+[1-2 setninger om hva du/dere gjør]
+
+[Konkret samarbeidsidé - kort og spesifikk]
+
+[CTA - f.eks. "Kan vi ta en 15 min prat neste uke?"]
+
+Hilsen,
+[Navn]`}`;
+
+            const result = await callAIHumanized([
+                { role: 'system', content: isEnglish ? 'You write pitch emails that feel authentic, not template-like.' : 'Du skriver pitch-e-poster som føles ekte, ikke templateaktige.' },
                 { role: 'user', content: prompt }
-            ]);
+            ], { toolType: 'pitch', includeValidation: true });
 
             setPitchEmail(result);
         } catch (err) {
             console.error('Pitch generation failed:', err);
-            setPitchEmail(`Hei [Navn],
+            setPitchEmail(isEnglish ? `Hi [Name],
 
-Jeg skriver til deg på vegne av ${brandName}. Vi er store fans av det ${targetBrand} gjør, og vi ser et spennende potensial for samarbeid.
+Saw ${targetBrand}'s latest campaign - really great stuff.
 
-Vi har en engasjert følgerskare som matcher deres målgruppe perfekt. Vi foreslår et ${goal}-samarbeid der vi kan:
+I run ${brandName}, and we have an audience that matches yours pretty perfectly. Thought it could be cool to do a ${goal} collaboration.
 
-• Skape autentisk innhold som viser produktene deres i aksjon
-• Nå tusenvis av potensielle kunder i vår nisje
-• Bygge langsiktig merkevareassosiajon
+Concrete idea: [Customize this based on what you actually want to propose]
 
-Kan vi ta en kort samtale neste uke for å diskutere mulighetene?
+Can we do a 15 min call next week?
 
-Vennlig hilsen,
-${brandName}
+Cheers,
+${brandName}` : `Hei [Navn],
 
-PS: Sjekk gjerne vår profil for å se eksempler på tidligere samarbeid.`);
+Så ${targetBrand} sin siste kampanje - virkelig bra greier.
+
+Jeg driver ${brandName}, og vi har en følgerskare som matcher dere ganske perfekt. Tenkte det kunne vært kult med et ${goal}-samarbeid.
+
+Konkret idé: [Tilpass dette basert på hva du faktisk vil foreslå]
+
+Kan vi ta en 15 min prat neste uke?
+
+Hilsen,
+${brandName}`);
         } finally {
             setIsLoading(false);
         }

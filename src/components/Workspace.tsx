@@ -90,8 +90,8 @@ const Workspace: React.FC<WorkspaceProps> = ({ brand, vibePresets, updateBrand, 
                         {/* Tab Content */}
                         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 min-h-[500px]">
                             {activeTab === 'overview' && <OverviewTab brand={brand} updateBrand={updateBrand} onGenerateNext={onGenerateNext} />}
-                            {activeTab === 'research' && <ResearchTab brand={brand} />}
-                            {activeTab === 'strategy' && <StrategyTab brand={brand} />}
+                            {activeTab === 'research' && <ResearchTab brand={brand} updateBrand={updateBrand} />}
+                            {activeTab === 'strategy' && <StrategyTab brand={brand} updateBrand={updateBrand} />}
                             {activeTab === 'content' && <ContentTab brand={brand} vibePresets={vibePresets} updateBrand={updateBrand} />}
                             {activeTab === 'calendar' && <CalendarTab brand={brand} updateBrand={updateBrand} />}
                             {activeTab === 'analytics' && <AnalyticsTab brand={brand} />}

@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { X, Sparkles, Zap } from 'lucide-react';
-import { callAI } from '../services/ai';
+import { callAIHumanized } from '../services/humanizer';
 import { useToast } from './ToastContext';
+import { useSettings } from '../context/SettingsContext';
+import { buildLanguagePromptSection } from '../services/languagePrompts';
+import type { Brand } from '../App';
 
 interface HookLabModalProps {
+    brand: Brand;
     onClose: () => void;
     onSelectHook: (hook: string) => void;
 }
@@ -13,11 +17,25 @@ interface HookResult {
     viralityScore: number;
 }
 
-const HookLabModal: React.FC<HookLabModalProps> = ({ onClose, onSelectHook }) => {
+const HookLabModal: React.FC<HookLabModalProps> = ({ brand, onClose, onSelectHook }) => {
     const { showToast } = useToast();
+    const { settings } = useSettings();
     const [topic, setTopic] = useState('');
     const [hooks, setHooks] = useState<HookResult[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+
+    const languageSection = buildLanguagePromptSection(settings.language);
+
+    // Build brand context for more relevant hooks
+    const brandContext = `
+BRAND-KONTEKST:
+- Merkevare: ${brand.name}
+- Tone: ${brand.vibe}
+${brand.targetAudience ? `- Målgruppe: ${brand.targetAudience}` : ''}
+${brand.brandBrief?.audiencePainPoints?.length ? `- Målgruppens smertepunkter: ${brand.brandBrief.audiencePainPoints.slice(0, 3).join(', ')}` : ''}
+${brand.brandBrief?.contentAngles?.length ? `- Innholdsvinkler: ${brand.brandBrief.contentAngles.slice(0, 3).join(', ')}` : ''}
+${brand.personaKernel?.voiceSignature ? `- Stemmesignatur: ${brand.personaKernel.voiceSignature}` : ''}
+`;
 
     const generateHooks = async () => {
         if (!topic.trim()) return;
@@ -25,24 +43,40 @@ const HookLabModal: React.FC<HookLabModalProps> = ({ onClose, onSelectHook }) =>
         setHooks([]);
 
         try {
-            const prompt = `Du er en ekspert på virale sosiale medier. Generer 5 ulike "hooks" (åpningssetninger) for et innlegg om: "${topic}".
+            const prompt = `${languageSection}
+${brandContext}
+
+Generer 5 ulike "hooks" (åpningssetninger) for et innlegg om: "${topic}".
 
 For hver hook, gi en virality-score fra 1-100 basert på hvor sannsynlig det er at den fanger oppmerksomhet.
 
 Returner som JSON array:
 [{ "text": "Hook tekst her...", "viralityScore": 85 }, ...]
 
-Vær kreativ, bruk forskjellige teknikker:
-- Kontroversielle påstander
-- Spørsmål
-- Tall/statistikk
-- Personlige historier
-- "Du vil ikke tro..."-stil`;
+KRITISKE REGLER FOR HOOKS:
+- ALDRI start med "Visste du at..." eller "Her er X tips..."
+- ALDRI bruk "I en verden der..." eller "Det finnes mange måter..."
+- ALDRI vær generisk eller safe
+- Hooks skal stoppe scrollingen UMIDDELBART
+- Maks 15 ord per hook
+- Bruk kontrast, provokasjon, eller overraskelse
+- Personlige historier fungerer: "Jeg brukte 3 år på..."
+- Spørsmål som trigger nysgjerrighet
+- Hot takes og kontroversielle påstander
+- Tall som overrasker
+- Hookene skal være RELEVANTE for merkevaren og treffe målgruppens smertepunkter
 
-            const result = await callAI([
-                { role: 'system', content: 'Du er en viral content ekspert. Svar kun med JSON.' },
+GODE EKSEMPLER:
+- "Alle sier X. De tar feil."
+- "Jeg sa opp jobben min. Her er hva som skjedde."
+- "Stop. Les dette før du gjør [topic]."
+- "Upopulær mening om [topic]:"
+- "3 år med [topic]. 1 setning oppsummerer alt."`;
+
+            const result = await callAIHumanized([
+                { role: 'system', content: 'Du genererer virale hooks. Svar kun med JSON array.' },
                 { role: 'user', content: prompt }
-            ]);
+            ], { toolType: 'hook', includeValidation: false });
 
             try {
                 const match = result.match(/\[[\s\S]*\]/);

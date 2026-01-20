@@ -3,21 +3,28 @@ import type { Brand } from '../App';
 import GlobalCalendar from './GlobalCalendar';
 import AnalyticsView from './AnalyticsView';
 import MediaKitModal from './MediaKitModal';
-import { Settings, BarChart2, FileText, Wrench } from 'lucide-react';
+import { Settings, BarChart2, FileText, Wrench, Trash2 } from 'lucide-react';
+import { useSettings } from '../context/SettingsContext';
 
 interface DashboardProps {
     brands: Brand[];
     onSelect: (brandId: string) => void;
     onAddNew: () => void;
     onUpdateBrand: (brand: Brand) => void;
+    onDeleteBrand?: (brandId: string) => void;
     onGoToSettings: () => void;
     onGoToTools?: () => void;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpdateBrand, onGoToSettings, onGoToTools }) => {
+const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpdateBrand, onDeleteBrand, onGoToSettings, onGoToTools }) => {
+    const { settings, setLanguage } = useSettings();
     const [view, setView] = useState<'grid' | 'calendar' | 'analytics'>('grid');
     const [streak, setStreak] = useState(0);
     const [showMediaKit, setShowMediaKit] = useState(false);
+
+    const toggleLanguage = () => {
+        setLanguage(settings.language === 'no' ? 'en' : 'no');
+    };
 
     React.useEffect(() => {
         const lastVisit = localStorage.getItem('lastVisit');
@@ -60,10 +67,20 @@ const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpd
                 </div>
 
                 <div className="flex flex-col items-end gap-4">
-                    {/* Streak Badge */}
-                    <div className="flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-1.5 rounded-full border border-orange-100 shadow-sm animate-fade-in" title="Dager på rad med innlogging!">
-                        <span className="text-lg">🔥</span>
-                        <span className="font-bold font-sans text-sm">{streak} dager streak</span>
+                    {/* Language Toggle + Streak Badge */}
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={toggleLanguage}
+                            className="flex items-center gap-1.5 bg-white hover:bg-gray-50 text-brand-text/70 hover:text-brand-text px-3 py-1.5 rounded-full border border-gray-200 shadow-sm transition-all text-sm font-sans"
+                            title={settings.language === 'no' ? 'Switch to English' : 'Bytt til norsk'}
+                        >
+                            <span>{settings.language === 'no' ? '🇳🇴' : '🇬🇧'}</span>
+                            <span className="text-xs uppercase tracking-wider">{settings.language === 'no' ? 'NO' : 'EN'}</span>
+                        </button>
+                        <div className="flex items-center gap-2 bg-orange-50 text-orange-600 px-4 py-1.5 rounded-full border border-orange-100 shadow-sm animate-fade-in" title="Dager på rad med innlogging!">
+                            <span className="text-lg">🔥</span>
+                            <span className="font-bold font-sans text-sm">{streak} dager streak</span>
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-4">
@@ -135,6 +152,20 @@ const Dashboard: React.FC<DashboardProps> = ({ brands, onSelect, onAddNew, onUpd
                             className="group cursor-pointer bg-white border border-gray-100 rounded-2xl p-8 hover:shadow-2xl hover:shadow-gray-200/50 transition-all duration-500 relative overflow-hidden h-[280px] flex flex-col justify-between"
                         >
                             <div className="absolute top-0 left-0 w-1 h-full bg-brand-gold opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+
+                            {/* Delete button */}
+                            {onDeleteBrand && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onDeleteBrand(brand.id);
+                                    }}
+                                    className="absolute top-4 right-4 p-2 rounded-full bg-white/80 text-gray-400 hover:bg-red-50 hover:text-red-500 transition-all opacity-0 group-hover:opacity-100 z-10"
+                                    title="Slett merkevare"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
 
                             <div>
                                 <div className="flex justify-between items-start mb-6">

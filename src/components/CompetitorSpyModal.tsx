@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 import { X, Search, Eye, Sparkles } from 'lucide-react';
-import { callAI } from '../services/ai';
+import { callAIHumanized } from '../services/humanizer';
 import { fetchWebsite } from '../services/scraper';
+import { useSettings } from '../context/SettingsContext';
+import { buildLanguagePromptSection, getPromptTranslations } from '../services/languagePrompts';
+import type { Brand } from '../App';
 
 interface CompetitorSpyModalProps {
+    brand?: Brand;
     onClose: () => void;
 }
 
@@ -18,10 +22,25 @@ interface CompetitorAnalysis {
     source?: string;
 }
 
-const CompetitorSpyModal: React.FC<CompetitorSpyModalProps> = ({ onClose }) => {
+const CompetitorSpyModal: React.FC<CompetitorSpyModalProps> = ({ brand, onClose }) => {
+    const { settings } = useSettings();
     const [username, setUsername] = useState('');
     const [analysis, setAnalysis] = useState<CompetitorAnalysis | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+
+    const languageSection = buildLanguagePromptSection(settings.language);
+    const t = getPromptTranslations(settings.language);
+    const isEnglish = settings.language === 'en';
+
+    // Build brand context for more actionable competitor insights
+    const brandContext = brand ? `
+${isEnglish ? 'YOUR BRAND (use this to provide relevant opportunities):' : 'DITT BRAND (bruk dette til å gi relevante muligheter):'}
+- ${t.brand}: ${brand.name}
+${brand.targetAudience ? `- ${t.targetAudience}: ${brand.targetAudience}` : ''}
+${brand.industry ? `- ${t.industry}: ${brand.industry}` : ''}
+${brand.contentPillars?.length ? `- ${t.content.contentPillars}: ${brand.contentPillars.slice(0, 3).join(', ')}` : ''}
+${brand.brandBrief?.differentiators?.length ? `- ${t.content.yourStrengths}: ${brand.brandBrief.differentiators.slice(0, 2).join(', ')}` : ''}
+` : '';
 
     const analyzeCompetitor = async () => {
         if (!username.trim()) return;
@@ -41,26 +60,54 @@ const CompetitorSpyModal: React.FC<CompetitorSpyModalProps> = ({ onClose }) => {
                 // We use our scraper to get what we can (meta tags, bio, public info)
                 const scrapedText = await fetchWebsite(targetUrl);
                 if (scrapedText && scrapedText.length > 50) {
-                    realContext = `\n\nFANTISK DATA FRA PROFILEN (Bruk dette hvis relevant):\n${scrapedText.substring(0, 2000)}`;
+                    realContext = isEnglish
+                        ? `\n\nACTUAL DATA FROM PROFILE (Use this if relevant):\n${scrapedText.substring(0, 2000)}`
+                        : `\n\nFAKTISK DATA FRA PROFILEN (Bruk dette hvis relevant):\n${scrapedText.substring(0, 2000)}`;
                     source = "Live Data";
                 }
             } catch (ignored) {
                 console.log('Scraping failed, falling back to pure AI knowledge');
             }
 
-            const prompt = `Du er en ekspert sosiale medier-analytiker.
-Oppgave: Analyser profilen "${username}".
+            const prompt = `${languageSection}
+${brandContext}
+
+${isEnglish ? `You are an expert social media analyst.
+Task: Analyze the profile "${username}" and provide insights relevant to my brand.
+${realContext}
+
+If data exists in "ACTUAL DATA", use it. Otherwise, use your general knowledge about this niche/profile or simulate a realistic profile based on the username.
+
+Create a strategic analysis with:
+1. ${t.competitorSpy.estimatedFollowers} (if unknown, guess based on "vibe" or niche)
+2. ${t.competitorSpy.postingFrequency}
+3. ${t.competitorSpy.topContentTypes}
+4. 3 ${t.competitorSpy.recentPostIdeas} (realistic)
+5. ${t.competitorSpy.strategySummary}
+6. 3 ${t.competitorSpy.opportunities}
+
+Return ONLY JSON in this format:
+{
+  "username": "@${username}",
+  "followers": "Est. 15K",
+  "postingFrequency": "Daily",
+  "topContentTypes": ["Type 1", "Type 2", "Type 3"],
+  "recentPosts": ["Post 1...", "Post 2...", "Post 3..."],
+  "strategy": "Short description of their strategy...",
+  "opportunities": ["Opportunity 1", "Opportunity 2", "Opportunity 3"]
+}` : `Du er en ekspert sosiale medier-analytiker.
+Oppgave: Analyser profilen "${username}" og gi innsikter relevante for mitt brand.
 ${realContext}
 
 Vis dataen finnes i "FAKTISK DATA", bruk den. Hvis ikke, bruk din generelle kunnskap om denne nichen/profilen eller simuler en realistisk profil basert på brukernavnet.
 
 Lag en strategisk analyse med:
-1. Estimerte følgere (hvis ukjent, gjett basert på "vibe" eller niche)
-2. Posting-frekvens
-3. Topp 3 innholdstyper
-4. 3 konkrete eksempler på nylige post-ideer (realistiske)
-5. Strategi-oppsummering
-6. 3 muligheter for forbedring/angrep
+1. ${t.competitorSpy.estimatedFollowers} (hvis ukjent, gjett basert på "vibe" eller niche)
+2. ${t.competitorSpy.postingFrequency}
+3. ${t.competitorSpy.topContentTypes}
+4. 3 ${t.competitorSpy.recentPostIdeas} (realistiske)
+5. ${t.competitorSpy.strategySummary}
+6. 3 ${t.competitorSpy.opportunities}
 
 Returner KUN JSON i dette formatet:
 {
@@ -71,12 +118,12 @@ Returner KUN JSON i dette formatet:
   "recentPosts": ["Tittel 1...", "Tittel 2...", "Tittel 3..."],
   "strategy": "Kort beskrivelse av strategien...",
   "opportunities": ["Mulighet 1", "Mulighet 2", "Mulighet 3"]
-}`;
+}`}`;
 
-            const result = await callAI([
-                { role: 'system', content: 'Du er en JSON-maskin. Svar kun gyldig JSON.' },
+            const result = await callAIHumanized([
+                { role: 'system', content: isEnglish ? 'You are a JSON machine. Reply only with valid JSON.' : 'Du er en JSON-maskin. Svar kun gyldig JSON.' },
                 { role: 'user', content: prompt }
-            ]);
+            ], { toolType: 'content', includeValidation: false });
 
             try {
                 // Clean markdown code blocks if present
@@ -87,13 +134,13 @@ Returner KUN JSON i dette formatet:
             } catch (parseErr) {
                 console.error('JSON Parse failed:', parseErr);
                 // Fallback hardcoded if AI creates garbage
-                throw new Error('Kunne ikke tolke AI-responsen');
+                throw new Error(isEnglish ? 'Could not parse AI response' : 'Kunne ikke tolke AI-responsen');
             }
         } catch (err) {
             console.error('Analysis failed:', err);
-            // Show error to user via simple alert or specific UI state, 
+            // Show error to user via simple alert or specific UI state,
             // for now lets set a dummy "Error" analysis so they see something happened
-            alert('Kunne ikke analysere akkurat nå. Prøv igjen.');
+            alert(isEnglish ? 'Could not analyze right now. Try again.' : 'Kunne ikke analysere akkurat nå. Prøv igjen.');
         } finally {
             setIsLoading(false);
         }

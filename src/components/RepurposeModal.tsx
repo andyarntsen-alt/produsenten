@@ -1,18 +1,35 @@
 import React, { useState } from 'react';
 import { X, RefreshCw, Linkedin, Twitter } from 'lucide-react';
-import { callAI } from '../services/ai';
+import { callAIHumanized } from '../services/humanizer';
 import { useToast } from './ToastContext';
+import { useSettings } from '../context/SettingsContext';
+import { buildLanguagePromptSection } from '../services/languagePrompts';
+import type { Brand } from '../App';
 
 interface RepurposeModalProps {
+    brand: Brand;
     onClose: () => void;
     onCreatePosts: (posts: { text: string; hook: string; platform: string }[]) => void;
 }
 
-const RepurposeModal: React.FC<RepurposeModalProps> = ({ onClose, onCreatePosts }) => {
+const RepurposeModal: React.FC<RepurposeModalProps> = ({ brand, onClose, onCreatePosts }) => {
     const { showToast } = useToast();
+    const { settings } = useSettings();
     const [sourceText, setSourceText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [results, setResults] = useState<{ platform: string; text: string; icon: React.ReactNode }[]>([]);
+
+    const languageSection = buildLanguagePromptSection(settings.language);
+
+    // Build brand context for persona-aware repurposing
+    const brandContext = `
+BRAND-KONTEKST:
+- Merkevare: ${brand.name}
+- Tone: ${brand.vibe}
+${brand.targetAudience ? `- Målgruppe: ${brand.targetAudience}` : ''}
+${brand.personaKernel?.voiceSignature ? `- Stemmesignatur: ${brand.personaKernel.voiceSignature}` : ''}
+${brand.brandBrief?.toneRules?.length ? `- Toneregler: ${brand.brandBrief.toneRules.slice(0, 3).join(', ')}` : ''}
+`;
 
     const repurposeContent = async () => {
         if (!sourceText.trim()) return;
@@ -20,15 +37,39 @@ const RepurposeModal: React.FC<RepurposeModalProps> = ({ onClose, onCreatePosts 
         setResults([]);
 
         try {
-            const prompt = `Du er en ekspert på sosiale medier. Ta følgende innhold og transformer det til 3 forskjellige plattformer:
+            const prompt = `${languageSection}
+${brandContext}
 
-Originalinnhold:
-"${sourceText}"
+Transform dette innholdet til 3 plattformer, tilpasset merkevarens stemme og målgruppe:
 
-Lag:
-1. **Twitter/X**: Kort, punchy, max 280 tegn. Kan bruke emojis.
-2. **LinkedIn**: Profesjonell tone, storytelling-format med mellomrom, 500-1000 tegn.
-3. **Instagram Caption**: Engasjerende, personlig, med CTA. 300-600 tegn.
+Original: "${sourceText}"
+
+KRAV FOR HVER:
+
+**Twitter/X** (maks 280 tegn):
+- Kort og punchy
+- Start med hook, ikke intro
+- Maks 2 emojis
+- ALDRI "Her er mine tanker om..."
+
+**LinkedIn** (500-800 tegn):
+- Luftig format med linjeskift
+- Profesjonell MEN personlig
+- Start med hook, ikke "I dag vil jeg dele..."
+- ALDRI avslutt med "Hva tenker du?"
+
+**Instagram** (300-500 tegn):
+- Personlig og engasjerende
+- Storytelling-format
+- Maks 3 emojis
+- ALDRI "Swipe for mer!" eller "Link i bio!" på slutten
+
+HUMANISERINGS-REGLER (gjelder alle):
+- Varier setningslengden
+- Bruk "jeg/du/vi", aldri "man"
+- Føles som ekte person, ikke brand
+- ALDRI start med "Selvfølgelig!" eller "Her er..."
+- ALDRI avslutt med "Lykke til!" eller "Håper det hjelper!"
 
 Returner som JSON array:
 [
@@ -37,10 +78,10 @@ Returner som JSON array:
   { "platform": "Instagram", "text": "..." }
 ]`;
 
-            const result = await callAI([
-                { role: 'system', content: 'Du er en content repurposing ekspert. Svar kun med JSON.' },
+            const result = await callAIHumanized([
+                { role: 'system', content: 'Du repurposer innhold til ulike plattformer. Svar kun med JSON.' },
                 { role: 'user', content: prompt }
-            ]);
+            ], { toolType: 'repurpose', includeValidation: true });
 
             try {
                 const match = result.match(/\[[\s\S]*\]/);

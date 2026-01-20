@@ -1,6 +1,7 @@
 import React from 'react';
-import { ArrowLeft, Trash2, Download, Database } from 'lucide-react';
+import { ArrowLeft, Trash2, Download, Database, Globe } from 'lucide-react';
 import { useToast } from './ToastContext';
+import { useSettings, LANGUAGE_OPTIONS, type Language } from '../context/SettingsContext';
 
 interface SettingsPageProps {
     onBack: () => void;
@@ -8,6 +9,12 @@ interface SettingsPageProps {
 
 const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
     const { showToast, showConfirm } = useToast();
+    const { settings, setLanguage } = useSettings();
+
+    const handleLanguageChange = (lang: Language) => {
+        setLanguage(lang);
+        showToast(lang === 'no' ? 'Språk endret til norsk' : 'Language changed to English', 'success');
+    };
 
     const handleDeleteAllData = async () => {
         const confirmed = await showConfirm({
@@ -55,6 +62,53 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ onBack }) => {
                 <p className="text-brand-text/60 mb-12">Administrer dine data og preferanser.</p>
 
                 <div className="space-y-6">
+                    {/* Language Section */}
+                    <section className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
+                        <div className="flex items-center gap-3 mb-6">
+                            <Globe className="text-blue-500" size={24} />
+                            <h2 className="text-xl font-serif italic text-brand-text">Språk / Language</h2>
+                        </div>
+
+                        <div className="space-y-4">
+                            <p className="text-sm text-brand-text/60 mb-4">
+                                Velg språk for AI-generert innhold. Dette påvirker alle nye poster og tekster.
+                            </p>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                {LANGUAGE_OPTIONS.map(({ value, label, flag }) => (
+                                    <button
+                                        key={value}
+                                        onClick={() => handleLanguageChange(value)}
+                                        className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                                            settings.language === value
+                                                ? 'border-blue-500 bg-blue-50 shadow-md'
+                                                : 'border-gray-200 bg-gray-50 hover:border-gray-300'
+                                        }`}
+                                    >
+                                        <span className="text-2xl">{flag}</span>
+                                        <div className="text-left">
+                                            <p className={`font-bold ${settings.language === value ? 'text-blue-700' : 'text-brand-text'}`}>
+                                                {label}
+                                            </p>
+                                            <p className="text-xs text-brand-text/50">
+                                                {value === 'no' ? 'Standard' : 'Default'}
+                                            </p>
+                                        </div>
+                                        {settings.language === value && (
+                                            <span className="ml-auto text-blue-500 text-lg">✓</span>
+                                        )}
+                                    </button>
+                                ))}
+                            </div>
+
+                            <p className="text-xs text-brand-text/40 mt-4 p-3 bg-gray-50 rounded-lg">
+                                💡 {settings.language === 'no'
+                                    ? 'Alle nye poster genereres på norsk med norske uttrykk og tone.'
+                                    : 'All new posts will be generated in English with natural expressions.'}
+                            </p>
+                        </div>
+                    </section>
+
                     {/* Data Section */}
                     <section className="bg-white p-8 rounded-2xl border border-gray-100 shadow-sm">
                         <div className="flex items-center gap-3 mb-6">

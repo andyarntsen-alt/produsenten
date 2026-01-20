@@ -1,9 +1,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Mic, MicOff, Sparkles } from 'lucide-react';
-import { callAI } from '../services/ai';
+import { callAIHumanized } from '../services/humanizer';
 import { useToast } from './ToastContext';
+import { useSettings } from '../context/SettingsContext';
+import { buildLanguagePromptSection } from '../services/languagePrompts';
+import type { Brand } from '../App';
 
 interface VoiceRecorderModalProps {
+    brand: Brand;
     onClose: () => void;
     onCreatePosts: (posts: { text: string; hook: string }[]) => void;
 }
@@ -51,12 +55,25 @@ interface WindowWithSpeechRecognition {
     webkitSpeechRecognition?: new () => SpeechRecognition;
 }
 
-const VoiceRecorderModal: React.FC<VoiceRecorderModalProps> = ({ onClose, onCreatePosts }) => {
+const VoiceRecorderModal: React.FC<VoiceRecorderModalProps> = ({ brand, onClose, onCreatePosts }) => {
     const { showToast } = useToast();
+    const { settings } = useSettings();
     const [isRecording, setIsRecording] = useState(false);
     const [transcript, setTranscript] = useState('');
     const [isProcessing, setIsProcessing] = useState(false);
     const recognitionRef = useRef<SpeechRecognition | null>(null);
+
+    const languageSection = buildLanguagePromptSection(settings.language);
+
+    // Build brand context for persona-aware processing
+    const brandContext = `
+BRAND-KONTEKST:
+- Merkevare: ${brand.name}
+- Tone: ${brand.vibe}
+${brand.targetAudience ? `- Målgruppe: ${brand.targetAudience}` : ''}
+${brand.personaKernel?.voiceSignature ? `- Stemmesignatur: ${brand.personaKernel.voiceSignature}` : ''}
+${brand.brandBrief?.brandPersonality ? `- Personlighet: ${brand.brandBrief.brandPersonality}` : ''}
+`;
 
     useEffect(() => {
         // Check for browser support
@@ -117,25 +134,43 @@ const VoiceRecorderModal: React.FC<VoiceRecorderModalProps> = ({ onClose, onCrea
         setIsProcessing(true);
 
         try {
-            const prompt = `Du er en innholdsskaper-assistent. Brukeren har nettopp "rantet" (snakket fritt) om et tema. 
-Din jobb er å ta den rå transkripsjonen og lage 3 godt formulerte sosiale medier-poster av det.
+            const prompt = `${languageSection}
+${brandContext}
 
-Transkripsjonen:
+Brukeren har rantet (snakket fritt) om et tema. Lag 3 sosiale medier-poster basert på det.
+
+Transkripsjon:
 "${transcript}"
 
-Regler:
-1. Behold brukerens stemme og personlighet
-2. Rydd opp i grammatikk og flyten
-3. Lag 3 varianter: En kort (tweet-lengde), en medium (LinkedIn), og en lang (Blog-intro)
-4. Hver post skal ha en fengende "hook" (åpningssetning)
+KRITISKE REGLER:
+1. BEHOLD brukerens stemme og personlighet - dette er DERES ord, bare polert
+2. Rydd opp grammatikk, men behold muntlig flyt
+3. Tilpass til merkevarens tone og målgruppe
+4. Lag 3 varianter:
+   - KORT (tweet, maks 280 tegn)
+   - MEDIUM (LinkedIn, 400-600 tegn)
+   - LANG (Blog-intro, 800+ tegn)
+
+HUMANISERING:
+- Føles som "polert versjon av meg", ikke AI-omskriving
+- Behold eventuelle særegne uttrykk/ord brukeren brukte
+- Match merkevarens stemmesignatur
+- Varier setningslengden
+- ALDRI legg til "Lykke til!" eller andre AI-avslutninger
+- ALDRI start med "Her er mine tanker om..."
+- Hooks skal være ekte tanker fra ranten, ikke clickbait
 
 Returner som JSON array:
-[{ "text": "Full post tekst...", "hook": "Første linje som fanger oppmerksomhet" }, ...]`;
+[
+  { "text": "Kort versjon...", "hook": "Første linje" },
+  { "text": "Medium versjon...", "hook": "Første linje" },
+  { "text": "Lang versjon...", "hook": "Første linje" }
+]`;
 
-            const result = await callAI([
-                { role: 'system', content: 'Du er en kreativ innholdsskaper. Svar kun med JSON.' },
+            const result = await callAIHumanized([
+                { role: 'system', content: 'Du polerer brukerens egne ord til sosiale medier-poster. Svar kun med JSON.' },
                 { role: 'user', content: prompt }
-            ]);
+            ], { toolType: 'voice', includeValidation: true });
 
             try {
                 const match = result.match(/\[[\s\S]*\]/);

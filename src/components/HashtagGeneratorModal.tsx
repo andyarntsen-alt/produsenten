@@ -1,8 +1,12 @@
 import React, { useState } from 'react';
 import { X, Hash, Copy, Check } from 'lucide-react';
-import { callAI } from '../services/ai';
+import { callAIHumanized } from '../services/humanizer';
+import { useSettings } from '../context/SettingsContext';
+import { buildLanguagePromptSection, getPromptTranslations } from '../services/languagePrompts';
+import type { Brand } from '../App';
 
 interface HashtagGeneratorModalProps {
+    brand?: Brand;
     onClose: () => void;
 }
 
@@ -12,11 +16,25 @@ interface HashtagGroup {
     color: string;
 }
 
-const HashtagGeneratorModal: React.FC<HashtagGeneratorModalProps> = ({ onClose }) => {
+const HashtagGeneratorModal: React.FC<HashtagGeneratorModalProps> = ({ brand, onClose }) => {
+    const { settings } = useSettings();
     const [postText, setPostText] = useState('');
     const [hashtags, setHashtags] = useState<HashtagGroup[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [copied, setCopied] = useState(false);
+
+    const languageSection = buildLanguagePromptSection(settings.language);
+    const t = getPromptTranslations(settings.language);
+    const isEnglish = settings.language === 'en';
+
+    // Build brand context for niche-specific hashtags
+    const brandContext = brand ? `
+${t.content.brandContext}:
+- ${t.brand}: ${brand.name}
+${brand.industry ? `- ${t.industry}: ${brand.industry}` : ''}
+${brand.targetAudience ? `- ${t.targetAudience}: ${brand.targetAudience}` : ''}
+${brand.contentPillars?.length ? `- ${t.content.contentPillars}: ${brand.contentPillars.slice(0, 3).join(', ')}` : ''}
+` : '';
 
     const generateHashtags = async () => {
         if (!postText.trim()) return;
@@ -24,29 +42,41 @@ const HashtagGeneratorModal: React.FC<HashtagGeneratorModalProps> = ({ onClose }
         setHashtags([]);
 
         try {
-            const prompt = `Du er en hashtag-ekspert for sosiale medier. Basert på følgende post, generer relevante hashtags kategorisert etter konkurransenivå.
+            const prompt = `${languageSection}
+${brandContext}
 
-Posten:
+${t.hashtagGenerator.generateHashtags}:
+
 "${postText}"
 
-Generer hashtags i 3 kategorier:
-1. "Høy konkurranse" (populære, >1M innlegg) - 5 stk
-2. "Medium konkurranse" (nisje, 100K-1M innlegg) - 10 stk  
-3. "Lav konkurranse" (spesifikke, <100K innlegg) - 10 stk
+${t.hashtagGenerator.requirements}:
+1. "${t.hashtagGenerator.highCompetition}" (>1M ${t.hashtagGenerator.posts}) - 5
+2. "${t.hashtagGenerator.mediumCompetition}" (100K-1M) - 10
+3. "${t.hashtagGenerator.lowCompetition}" (<100K) - 10
 
-Returner som JSON:
+${isEnglish ? `RULES:
+- Relevant to the post, not generic
+- Use English hashtags
+- AVOID overused/meaningless tags like #inspo #lifestyle #blessed
+- Include niche-specific tags
+- All must start with #` : `REGLER:
+- Relevante til posten, ikke generiske
+- Norsk ELLER engelsk avhengig av hva som passer
+- UNNGÅ overbrukte/meningsløse tags som #inspo #lifestyle #blessed
+- Inkluder nisje-spesifikke tags
+- Alle må starte med #`}
+
+${isEnglish ? 'Return as JSON:' : 'Returner som JSON:'}
 [
-  { "category": "Høy konkurranse", "tags": ["#tag1", "#tag2", ...] },
-  { "category": "Medium konkurranse", "tags": [...] },
-  { "category": "Lav konkurranse", "tags": [...] }
-]
+  { "category": "${t.hashtagGenerator.highCompetition}", "tags": ["#tag1", "#tag2", ...] },
+  { "category": "${t.hashtagGenerator.mediumCompetition}", "tags": [...] },
+  { "category": "${t.hashtagGenerator.lowCompetition}", "tags": [...] }
+]`;
 
-Alle hashtags skal være på norsk eller engelsk avhengig av kontekst.`;
-
-            const result = await callAI([
-                { role: 'system', content: 'Du er en hashtag-ekspert. Svar kun med JSON.' },
+            const result = await callAIHumanized([
+                { role: 'system', content: isEnglish ? 'You generate relevant hashtags. Reply only with JSON.' : 'Du genererer relevante hashtags. Svar kun med JSON.' },
                 { role: 'user', content: prompt }
-            ]);
+            ], { toolType: 'hashtag', includeValidation: false });
 
             try {
                 const match = result.match(/\[[\s\S]*\]/);
@@ -57,7 +87,11 @@ Alle hashtags skal være på norsk eller engelsk avhengig av kontekst.`;
                 }));
                 setHashtags(withColors);
             } catch {
-                setHashtags([
+                setHashtags(isEnglish ? [
+                    { category: 'High competition', tags: ['#inspo', '#lifestyle', '#content', '#creator', '#entrepreneur'], color: 'red' },
+                    { category: 'Medium competition', tags: ['#contentcreator', '#digitalmarketing', '#socialmediatips', '#marketingtips', '#personalbranding', '#onlinebusiness', '#growthmindset', '#brandbuilding', '#contentmarketing', '#smallbusiness'], color: 'yellow' },
+                    { category: 'Low competition', tags: ['#contentstrategy', '#socialmediastrategy', '#microinfluencer', '#ugccreator', '#contentplanning', '#creativecontent', '#digitalcreator', '#brandingtips', '#contentideas', '#socialmediacreator'], color: 'green' }
+                ] : [
                     { category: 'Høy konkurranse', tags: ['#inspo', '#lifestyle', '#content', '#creator', '#norway'], color: 'red' },
                     { category: 'Medium konkurranse', tags: ['#norskblogger', '#innholdsskaper', '#digitalmarketing', '#influencernorge', '#contentcreator', '#socialmediatips', '#norskinfluencer', '#merkevare', '#markedsføring', '#vekst'], color: 'yellow' },
                     { category: 'Lav konkurranse', tags: ['#produsenten', '#innholdsstrategi', '#norskinnhold', '#sosialemediertips', '#mikroinfluencer', '#ugcnorge', '#brandbuilding', '#innholdsplan', '#kreativtinnhold', '#digitalnorge'], color: 'green' }
